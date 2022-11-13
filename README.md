@@ -96,6 +96,7 @@ Tool | Version
 ### Prerequisites
 
 This is an example of how to list things you need to use the software and how to install them.
+* Mac, Linux, or Windows WSL
 * Nodejs >= 16.0.0
 * Docker (recommended)
 * Docker-compose (recommended)
