@@ -1,0 +1,16 @@
+{
+   "name": "express-acc",
+   "version": "0.0.1",
+   "description": "Activity Checkout Center",
+   "type": "module",
+   "exports": "./index.js",
+   "scripts": {
+      "dev": "npm --prefix ./client/ run ebuild && node index.js",
+      "setup": "echo npm install for server: && npm i && echo npm install for client && npm --prefix ./client/ i"
+   },
+   "dependencies": {
+      "express": "^4.18.2",
+      "lowdb": "^5.0.5",
+      "socket.io": "^4.5.2"
+   }
+}
