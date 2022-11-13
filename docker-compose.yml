@@ -1,7 +1,7 @@
 version: '3'
 services:
   express-acc:
-    image: mrsessions/expressacc
+    image: sessionstechnology/expressacc:latest
     environment:
       - TZ=America/New_York
     # build:
