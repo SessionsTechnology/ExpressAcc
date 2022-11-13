@@ -1,8 +1,5 @@
 <a name="readme-top"></a>
 
-### Bear with me as I clean up project files before the first true commit to this repo. It still won't be perfect, but I want to get it in a slightly better state. Thank you -Matt
-<br />
-
 <!-- [![Contributors][contributors-shield]][contributors-url] -->
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
