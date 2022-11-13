@@ -150,7 +150,7 @@ docker build -t expressacc:latest . && docker run -d -p 3001:3001 -v expressacc-
 ## Roadmap
 
 - [ ] Initial Open Source Release
-   - [ ] Publish initial commit
+   - [X] Publish initial commit
    - [ ] Finish Admin Dashboard
    - [ ] Finish Admin Edit User
    - [ ] Code Cleanup and Refactor
