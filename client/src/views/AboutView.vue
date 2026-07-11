@@ -1,15 +1,3 @@
 <template>
-  <div class="about">
-    <h1>This is an about page</h1>
-  </div>
+  <v-row justify="center"><v-col cols="12" md="8"><p class="eyebrow mb-3">About</p><h1 class="page-title mb-6">Built for shared responsibility.</h1><v-card class="glass-card pa-4 pa-sm-8"><v-card-text><p class="text-h6 mb-5">ExpressACC is a self-hosted activity checkout center for families, classrooms, churches, and other small communities.</p><p class="muted mb-4">Users manage their own shared items and can see exactly how much timed-device allowance remains. Admins keep an eye on checkouts, adjust schedules, and approve completed chores that earn extra time.</p><p class="muted">All operational data is stored locally in your installation. Back it up regularly from Admin Settings.</p></v-card-text><v-card-actions><v-btn to="/" color="primary" prepend-icon="mdi-arrow-left">Back home</v-btn></v-card-actions></v-card></v-col></v-row>
 </template>
-
-<style>
-@media (min-width: 1024px) {
-  .about {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-  }
-}
-</style>

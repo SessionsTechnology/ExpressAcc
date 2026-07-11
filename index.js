@@ -1,61 +1,66 @@
-import express from 'express'
-const app = express()
-import { join, dirname } from 'node:path'
+import { createServer } from 'node:http'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { db } from './lowdb/index.js'
-import { createServer } from 'http'
+import express from 'express'
+import helmet from 'helmet'
 import { Server } from 'socket.io'
-import { taskGetUserItemsAndTime } from './controllers/UserController.js'
-
-const server = createServer(app)
-const io = new Server(server, {
-    cors: {
-        origin: '*'
-    }
-})
+import { createApiRouter } from './server/api.js'
+import { createDatabase } from './server/database.js'
+import { createService } from './server/service.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-import { Socket } from './socket/setup.js'
+const port = Number(process.env.PORT || 3001)
+const host = process.env.HOST || '0.0.0.0'
 
-// Client files
-const path = join(__dirname, './public')
-app.use(express.static(path))
-app.get('/*', (req, res) => {
-  res.sendFile(join(path, 'index.html'));
-});
+export async function createApplication(options = {}) {
+  const database = await createDatabase(options.databaseFile)
+  const service = createService(database)
+  const app = express()
+  const server = createServer(app)
+  const io = new Server(server, {
+    cors: process.env.NODE_ENV === 'production' ? undefined : { origin: true, credentials: true },
+  })
 
-//DB read and initial setup if none
-(async () => {
-  console.log(db)
-  await db.read()
-  if (!db.data) db.data = {
-    adminSettings: {},
-    users: [],
-    items: [],
-    userItemAssociations: []
-  }; await db.write();
-})()
+  app.disable('x-powered-by')
+  app.set('trust proxy', 1)
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        fontSrc: ["'self'", 'data:'],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'", 'ws:', 'wss:'],
+      },
+    },
+  }))
+  app.use(express.json({ limit: '2mb' }))
+  app.use('/api', createApiRouter({ service, database, notify: () => io.emit('state:changed') }))
 
-io.on('connection', (socket) => {
-  console.log('client connected:', socket.id)
-  new Socket(socket).clientConnection()
-})
+  const publicPath = join(__dirname, 'client', 'dist')
+  app.use(express.static(publicPath, { maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0 }))
+  app.get('/{*splat}', (_request, response) => response.sendFile(join(publicPath, 'index.html')))
 
-//Setup for timer counts; tested with at least 50 users with timed items in one Docker container
-io.emit('', () => {
-  setInterval(
-    async () => {
-      try{
-        const allUsers = await taskGetUserItemsAndTime()
-        io.emit('updateCheckout', allUsers, () => {})
-      } catch(err){
-        console.log(err)
-        console.log('This is most likely due to needing first time setup. Please go to app webpage to get started.')
-      }
-    }, 1000
-  )
-})
+  io.on('connection', async (socket) => {
+    socket.emit('checkout:update', await service.getPublicState())
+  })
 
-server.listen(3001, () => {
-  console.log('listening on http://localhost:3001')
-});
+  const ticker = setInterval(async () => {
+    try {
+      io.emit('checkout:update', await service.getPublicState())
+    } catch (error) {
+      console.error('Unable to publish checkout update', error)
+    }
+  }, 1000)
+  ticker.unref()
+
+  return { app, server, database, service, close: () => clearInterval(ticker) }
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  const application = await createApplication()
+  application.server.listen(port, host, () => {
+    console.log(`ExpressACC is ready at http://localhost:${port}`)
+  })
+}

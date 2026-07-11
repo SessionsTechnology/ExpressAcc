@@ -1,16 +1,31 @@
 {
-   "name": "express-acc",
-   "version": "0.0.1",
-   "description": "Activity Checkout Center",
-   "type": "module",
-   "exports": "./index.js",
-   "scripts": {
-      "dev": "npm --prefix ./client/ run ebuild && node index.js",
-      "setup": "echo npm install for server: && npm i && echo npm install for client && npm --prefix ./client/ i"
-   },
-   "dependencies": {
-      "express": "^4.18.2",
-      "lowdb": "^5.0.5",
-      "socket.io": "^4.5.2"
-   }
+  "name": "express-acc",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A self-hosted household device checkout and chore manager",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "client"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace client",
+    "dev": "concurrently --kill-others --names server,client \"node --watch index.js\" \"npm run dev --workspace client\"",
+    "start": "node index.js",
+    "test": "node --test",
+    "check": "npm test && npm run build"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0",
+    "lowdb": "^7.0.1",
+    "socket.io": "^4.8.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  }
 }

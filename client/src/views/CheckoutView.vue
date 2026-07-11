@@ -1,57 +1,40 @@
 <template>
-  <v-row>
-      <v-col cols="12" sm="6" md="6" lg="4" xl="3" v-for="user in enabledUsers" :key="user.id" class="d-flex justify-center">
-        <v-card style="text-align: center;" @click="navToUser(user.id)" width="100%">
-            <v-card-title>{{ user.userName }}</v-card-title>
-            <v-card-text>
-              <v-text-field
-                  variant="plain"
-                  readonly
-              >{{ user.item === null ? 'Tap to Checkout Item' : 'Checked Out: ' + user.item.itemName }}</v-text-field>
-              <h1>{{ user.timer === 0 ? 'Time is up' : convertSecondsToString(user.timer) }}</h1>
-            </v-card-text>
+  <section>
+    <div class="d-flex align-center mb-8">
+      <div><p class="eyebrow mb-2">Self service</p><h1 class="text-h3">Who’s checking out?</h1></div>
+      <v-spacer /><v-btn to="/" variant="text" prepend-icon="mdi-arrow-left" class="d-none d-sm-flex">Home</v-btn>
+    </div>
+    <v-alert v-if="error" type="error" variant="tonal" class="mb-6">{{ error }}</v-alert>
+    <v-row v-if="users.length">
+      <v-col v-for="user in users" :key="user.id" cols="12" sm="6" lg="4">
+        <v-card class="glass-card action-card pa-2" :to="`/user/${user.id}`">
+          <v-card-text>
+            <div class="d-flex align-center mb-7">
+              <v-avatar color="primary" variant="tonal" size="54"><span class="text-h5 font-weight-bold">{{ user.name.slice(0, 1).toUpperCase() }}</span></v-avatar>
+              <div class="ml-4"><h2 class="text-h5">{{ user.name }}</h2><span class="muted">{{ user.checkout ? user.checkout.item.name : 'Ready to check out' }}</span></div>
+            </div>
+            <p class="muted text-caption mb-1">TODAY’S TIME</p>
+            <div class="stat-number" :class="{ 'text-error': user.timeRemainingSeconds === 0 }">{{ formatDuration(user.timeRemainingSeconds) }}</div>
+          </v-card-text>
+          <v-card-actions><v-chip :color="user.checkout ? 'accent' : 'success'" variant="tonal" size="small">{{ user.checkout ? 'Item out' : 'Available' }}</v-chip><v-spacer /><v-icon icon="mdi-chevron-right" /></v-card-actions>
         </v-card>
       </v-col>
-  </v-row>
+    </v-row>
+    <div v-else class="empty-state"><v-icon icon="mdi-account-plus-outline" size="44" class="mb-3" /><p>No active users yet. An admin can add them in Settings.</p></div>
+  </section>
 </template>
 
 <script setup>
-import router from "@/router";
-import {inject, onBeforeMount, ref, computed} from "vue";
-
-const socket = inject('globalSocket')
-
+import { inject, onBeforeUnmount, onMounted, ref } from 'vue'
+import { api } from '../lib/api.js'
+import { formatDuration } from '../lib/format.js'
+const socket = inject('socket')
 const users = ref([])
-onBeforeMount(() => {
-  socket.emit('getUserItemsAndTime', (res) => {
-    users.value = res
-  })
-  listen()
+const error = ref('')
+const update = (state) => { users.value = state.users }
+onMounted(async () => {
+  try { update(await api('/state')) } catch (exception) { error.value = exception.message }
+  socket.on('checkout:update', update)
 })
-
-const enabledUsers = computed(() => {
-  return users.value.filter(user => !user.disabled)
-})
-
-function convertSecondsToString(time) {
-  const hours = Math.floor(time / 3600)
-  const minutes = Math.floor((time % 3600) / 60)
-  const seconds = Math.floor(time % 60)
-  return `${formatNum(hours)}:${formatNum(minutes)}:${formatNum(seconds)}`
-}
-
-function formatNum(num) {
-  return num < 10 ? '0' + num : num
-}
-
-function navToUser(id){
-  router.push('/user/' + id)
-}
-
-function listen(){
-  socket.on('updateCheckout', (res) => {
-    users.value = res
-  })
-}
-
+onBeforeUnmount(() => socket.off('checkout:update', update))
 </script>

@@ -21,4 +21,6 @@ client/*.local
 .vscode/
 db.sqlite
 lowdb/db.json
+lowdb/*.bak
+.env
 .DS_Store

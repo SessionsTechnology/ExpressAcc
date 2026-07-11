@@ -1,17 +1,15 @@
-version: '3'
 services:
   express-acc:
-    image: sessionstechnology/expressacc:latest
+    build: .
+    image: expressacc:latest
     environment:
-      - TZ=America/New_York
-    # build:
-    #   dockerfile: Dockerfile
-    #   context: .
+      TZ: ${TZ:-America/Chicago}
+      DATABASE_FILE: /data/db.json
     ports:
-      - '3001:3001'
+      - "${PORT:-3001}:3001"
     volumes:
-      - express-acc:/lowdb
+      - express-acc-data:/data
     restart: unless-stopped
 
 volumes:
-  express-acc:
+  express-acc-data:

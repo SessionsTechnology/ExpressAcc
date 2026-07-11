@@ -1,31 +1,23 @@
 {
-  "name": "client",
-  "version": "0.0.0",
+  "name": "express-acc-client",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "serve": "vite preview",
     "build": "vite build",
-    "build-dev": "vite build --mode dev",
-    "dev": "vite",
-    "ebuild": "mkdir -p ../public && vite build -m dev && cp -r ./dist/* ../public",
-    "preview": "vite preview --port 4173"
+    "dev": "vite --host 0.0.0.0",
+    "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "@mdi/font": "5.9.55",
-    "register-service-worker": "^1.7.2",
-    "roboto-fontface": "*",
-    "socket.io": "^4.5.2",
-    "socket.io-client": "^4.5.2",
-    "uniqid": "^5.4.0",
-    "vue": "^3.2.45",
-    "vue-router": "^4.1.6",
-    "vuetify": "^3.0.1",
-    "webfontloader": "^1.0.0"
+    "@mdi/font": "^7.4.47",
+    "socket.io-client": "^4.8.3",
+    "vue": "^3.5.39",
+    "vue-router": "^5.1.0",
+    "vuetify": "^4.1.4"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^3.0.3",
-    "@vue/cli-plugin-pwa": "~5.0.0",
-    "vite": "^3.0.9",
-    "vite-plugin-vuetify": "^1.0.0-alpha.12",
-    "vue-cli-plugin-vuetify": "~2.5.8"
+    "@vitejs/plugin-vue": "^6.0.7",
+    "vite": "^8.1.4",
+    "vite-plugin-vuetify": "^2.1.3"
   }
 }
