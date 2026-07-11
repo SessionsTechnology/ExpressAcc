@@ -29,7 +29,7 @@
         <v-card v-else class="glass-card pa-3 pa-sm-6 mb-7">
           <v-card-text><p class="eyebrow mb-3">Available now</p><h2 class="section-heading mb-5">Choose an item</h2>
             <v-radio-group v-model="selectedItem">
-              <v-card v-for="item in state.availableItems" :key="item.id" variant="outlined" class="mb-3 pa-2 clickable" @click="selectedItem = item.id"><v-radio :value="item.id" color="primary"><template #label><div class="ml-2"><strong>{{ item.name }}</strong><v-chip v-if="item.isTimed" size="x-small" color="warning" variant="tonal" class="ml-2">Uses time</v-chip><div class="muted text-caption">{{ item.description }}</div></div></template></v-radio></v-card>
+              <v-card v-for="item in state.availableItems" :key="item.id" variant="outlined" class="mb-3 pa-2 clickable" @click="selectedItem = item.id"><v-radio :value="item.id" color="primary"><template #label><div class="available-item-label ml-2"><div><strong>{{ item.name }}</strong><v-chip v-if="item.isTimed" size="x-small" color="warning" variant="tonal" class="ml-2">Uses time</v-chip></div><div class="muted text-caption">{{ item.description }}</div></div></template></v-radio></v-card>
             </v-radio-group>
             <div v-if="!state.availableItems.length" class="empty-state">No items are available right now.</div>
           </v-card-text>
@@ -37,12 +37,13 @@
         </v-card>
         <v-card class="glass-card pa-3 pa-sm-6">
           <v-card-text><p class="eyebrow mb-3">Earn more time</p><h2 class="section-heading mb-5">Chores</h2>
-            <v-list bg-color="transparent" lines="three">
-              <v-list-item v-for="chore in state.chores" :key="chore.id" :title="chore.title" :subtitle="chore.description || `${chore.recurrence} chore`" class="mb-2">
-                <template #prepend><v-avatar color="secondary" variant="tonal"><v-icon icon="mdi-broom" /></v-avatar></template>
-                <template #append><v-chip v-if="chore.completionStatus" :color="chore.completionStatus === 'approved' ? 'success' : 'warning'" variant="tonal">{{ chore.completionStatus }}</v-chip><v-btn v-else color="secondary" variant="tonal" @click="completeChore(chore)">Submit · +{{ chore.rewardMinutes }}m</v-btn></template>
-              </v-list-item>
-            </v-list>
+            <div class="chore-list">
+              <div v-for="chore in state.chores" :key="chore.id" class="chore-list-item">
+                <v-avatar color="secondary" variant="tonal"><v-icon icon="mdi-broom" /></v-avatar>
+                <div class="chore-copy"><h3>{{ chore.title }}</h3><p class="muted text-caption">{{ chore.description || `${chore.recurrence} chore` }}</p></div>
+                <v-chip v-if="chore.completionStatus" :color="chore.completionStatus === 'approved' ? 'success' : 'warning'" variant="tonal" class="chore-action">{{ chore.completionStatus }}</v-chip><v-btn v-else color="secondary" variant="tonal" class="chore-action" @click="completeChore(chore)">Submit · +{{ chore.rewardMinutes }}m</v-btn>
+              </div>
+            </div>
             <div v-if="!state.chores.length" class="empty-state">No chores are assigned right now.</div>
           </v-card-text>
         </v-card>
@@ -76,4 +77,17 @@ onMounted(async () => { if (token.value) await load(); socket.on('state:changed'
 onBeforeUnmount(() => socket.off('state:changed', onChanged))
 </script>
 
-<style scoped>.pin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }</style>
+<style scoped>
+.pin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.available-item-label { min-width: 0; overflow-wrap: anywhere; }
+.chore-list { display: grid; gap: 10px; }
+.chore-list-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: rgba(255,255,255,.025); }
+.chore-copy { min-width: 0; }
+.chore-copy h3 { font-size: 1rem; line-height: 1.35; overflow-wrap: anywhere; }
+.chore-copy p { margin: 3px 0 0; line-height: 1.45; overflow-wrap: anywhere; }
+.chore-action { justify-self: end; }
+@media (max-width: 599px) {
+  .chore-list-item { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+  .chore-action { grid-column: 2; justify-self: start; }
+}
+</style>

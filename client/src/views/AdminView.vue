@@ -7,10 +7,10 @@
     <v-alert v-if="error" type="error" variant="tonal" closable class="mb-6" @click:close="error = ''">{{ error }}</v-alert>
 
     <v-row class="mb-7">
-      <v-col cols="6" md="3"><v-card class="glass-card pa-4"><div class="muted text-caption">ACTIVE USERS</div><div class="stat-number">{{ activeUsers.length }}</div></v-card></v-col>
-      <v-col cols="6" md="3"><v-card class="glass-card pa-4"><div class="muted text-caption">ITEMS OUT</div><div class="stat-number">{{ users.filter(user => user.checkout).length }}</div></v-card></v-col>
-      <v-col cols="6" md="3"><v-card class="glass-card pa-4"><div class="muted text-caption">PENDING CHORES</div><div class="stat-number">{{ pending.length }}</div></v-card></v-col>
-      <v-col cols="6" md="3"><v-card class="glass-card pa-4"><div class="muted text-caption">AVAILABLE ITEMS</div><div class="stat-number">{{ availableItemCount }}</div></v-card></v-col>
+      <v-col cols="6" md="3"><v-card class="glass-card pa-4 h-100"><div class="muted text-caption">ACTIVE USERS</div><div class="stat-number">{{ activeUsers.length }}</div></v-card></v-col>
+      <v-col cols="6" md="3"><v-card class="glass-card pa-4 h-100"><div class="muted text-caption">ITEMS OUT</div><div class="stat-number">{{ users.filter(user => user.checkout).length }}</div></v-card></v-col>
+      <v-col cols="6" md="3"><v-card class="glass-card pa-4 h-100"><div class="muted text-caption">PENDING CHORES</div><div class="stat-number">{{ pending.length }}</div></v-card></v-col>
+      <v-col cols="6" md="3"><v-card class="glass-card pa-4 h-100"><div class="muted text-caption">AVAILABLE ITEMS</div><div class="stat-number">{{ availableItemCount }}</div></v-card></v-col>
     </v-row>
 
     <div class="d-flex align-center mb-4"><h2 class="section-heading">Users and time</h2><v-spacer /><v-btn to="/checkout" variant="text" append-icon="mdi-arrow-right">Open kiosk</v-btn></div>

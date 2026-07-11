@@ -3,9 +3,9 @@
     <p class="eyebrow mb-4">Time, devices, and responsibilities</p>
     <h1 class="page-title mb-5">A calmer way to manage shared screen time.</h1>
     <p class="page-subtitle mb-10">Kids check devices in and out, timers stay accurate, and completed chores can earn extra time after approval.</p>
-    <v-row>
+    <v-row class="start-grid">
       <v-col cols="12" md="7">
-        <v-card class="glass-card action-card pa-3 pa-sm-7" to="/checkout">
+        <v-card class="glass-card action-card start-card pa-3 pa-sm-7" to="/checkout">
           <v-card-text>
             <v-avatar color="primary" variant="tonal" size="64" class="mb-8"><v-icon icon="mdi-gamepad-variant-outline" size="34" /></v-avatar>
             <h2 class="text-h4 mb-3">Check out or return an item</h2>
@@ -15,7 +15,7 @@
         </v-card>
       </v-col>
       <v-col cols="12" md="5">
-        <v-card class="glass-card action-card pa-3 pa-sm-7" to="/admin/login">
+        <v-card class="glass-card action-card start-card pa-3 pa-sm-7" to="/admin/login">
           <v-card-text>
             <v-avatar color="secondary" variant="tonal" size="64" class="mb-8"><v-icon icon="mdi-shield-account-outline" size="34" /></v-avatar>
             <h2 class="text-h4 mb-3">Parent dashboard</h2>
@@ -28,3 +28,8 @@
     <div class="text-center mt-8"><v-btn to="/about" variant="text" color="medium-emphasis">About ExpressACC</v-btn></div>
   </section>
 </template>
+
+<style scoped>
+.start-card { height: 100%; display: flex; flex-direction: column; }
+.start-card .v-card-text { flex: 1 1 auto; }
+</style>
