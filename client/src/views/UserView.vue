@@ -1,12 +1,23 @@
 <template>
   <v-row justify="center">
     <v-col cols="12" md="9" lg="8">
-      <div class="d-flex align-center mb-7"><v-btn to="/checkout" variant="text" prepend-icon="mdi-arrow-left">All users</v-btn></div>
-      <v-card v-if="!token" class="glass-card pa-3 pa-sm-6 mx-auto" max-width="520">
-        <v-card-text class="text-center">
-          <v-avatar color="primary" variant="tonal" size="72" class="mb-5"><v-icon icon="mdi-dialpad" size="38" /></v-avatar>
-          <h1 class="text-h4 mb-2">Enter your PIN</h1>
-          <p class="muted mb-6">Use the PIN your admin gave you. If you don’t have one, just continue.</p>
+      <header class="page-header user-page-header mb-8">
+        <div v-if="!token" class="page-header-copy">
+          <p class="eyebrow mb-2">Profile access</p>
+          <h1 class="page-heading mb-3">Enter your PIN</h1>
+          <p class="page-lede">Use the PIN your admin gave you. If you don’t have one, just continue.</p>
+        </div>
+        <div v-else-if="state.user" class="page-header-copy">
+          <p class="eyebrow mb-2">Welcome</p>
+          <h1 class="page-heading mb-3">{{ state.user.name }}</h1>
+          <p class="page-lede">You have <strong class="text-primary">{{ formatDuration(state.user.timeRemainingSeconds) }}</strong> remaining today.</p>
+        </div>
+        <v-btn to="/checkout" variant="text" prepend-icon="mdi-arrow-left">All users</v-btn>
+      </header>
+
+      <v-card v-if="!token" class="panel-card pin-card mx-auto" max-width="520">
+        <v-card-text class="pin-card-body text-center">
+          <v-avatar color="primary" variant="tonal" size="72" class="mb-6"><v-icon icon="mdi-dialpad" size="38" /></v-avatar>
           <v-alert v-if="error" type="error" variant="tonal" class="mb-5 text-left">{{ error }}</v-alert>
           <v-text-field v-model="pin" label="PIN" type="password" inputmode="numeric" autocomplete="off" autofocus @keyup.enter="unlock" />
           <div class="pin-grid mb-5">
@@ -19,24 +30,66 @@
       </v-card>
 
       <template v-else-if="state.user">
-        <div class="mb-8"><p class="eyebrow mb-2">Welcome</p><h1 class="text-h3 mb-2">{{ state.user.name }}</h1><p class="muted">You have <strong class="text-primary">{{ formatDuration(state.user.timeRemainingSeconds) }}</strong> remaining today.</p></div>
         <v-alert v-if="message" type="success" variant="tonal" closable class="mb-5" @click:close="message = ''">{{ message }}</v-alert>
         <v-alert v-if="error" type="error" variant="tonal" closable class="mb-5" @click:close="error = ''">{{ error }}</v-alert>
-        <v-card v-if="state.user.checkout" class="glass-card pa-3 pa-sm-6 mb-7">
-          <v-card-text><p class="eyebrow mb-3">Currently checked out</p><div class="d-flex flex-wrap align-center ga-5"><v-avatar color="accent" variant="tonal" size="68"><v-icon icon="mdi-gamepad-variant-outline" size="36" /></v-avatar><div><h2 class="text-h4">{{ state.user.checkout.item.name }}</h2><p class="muted">{{ state.user.checkout.item.description || 'Shared item' }}</p></div><v-spacer /><div class="stat-number">{{ formatDuration(state.user.timeRemainingSeconds) }}</div></div></v-card-text>
-          <v-card-actions><v-spacer /><v-btn color="accent" size="large" prepend-icon="mdi-tray-arrow-down" :loading="loading" @click="checkin">Check in item</v-btn></v-card-actions>
+        <v-card v-if="state.user.checkout" class="panel-card user-panel mb-7">
+          <v-card-text class="user-panel-body">
+            <div class="content-section-header mb-5">
+              <p class="eyebrow">Currently checked out</p>
+            </div>
+            <div class="user-checkout-summary">
+              <v-avatar color="accent" variant="tonal" size="68"><v-icon icon="mdi-gamepad-variant-outline" size="36" /></v-avatar>
+              <div class="user-checkout-copy">
+                <h2 class="user-checkout-title">{{ state.user.checkout.item.name }}</h2>
+                <p class="muted">{{ state.user.checkout.item.description || 'Shared item' }}</p>
+              </div>
+              <div class="user-checkout-time">
+                <span class="muted text-caption">TIME REMAINING</span>
+                <div class="stat-number">{{ formatDuration(state.user.timeRemainingSeconds) }}</div>
+              </div>
+            </div>
+          </v-card-text>
+          <v-card-actions class="user-panel-actions">
+            <v-spacer />
+            <v-btn color="accent" size="large" prepend-icon="mdi-tray-arrow-down" :loading="loading" @click="checkin">Check in item</v-btn>
+          </v-card-actions>
         </v-card>
-        <v-card v-else class="glass-card pa-3 pa-sm-6 mb-7">
-          <v-card-text><p class="eyebrow mb-3">Available now</p><h2 class="section-heading mb-5">Choose an item</h2>
-            <v-radio-group v-model="selectedItem">
-              <v-card v-for="item in state.availableItems" :key="item.id" variant="outlined" class="mb-3 pa-2 clickable" @click="selectedItem = item.id"><v-radio :value="item.id" color="primary"><template #label><div class="available-item-label ml-2"><div><strong>{{ item.name }}</strong><v-chip v-if="item.isTimed" size="x-small" color="warning" variant="tonal" class="ml-2">Uses time</v-chip></div><div class="muted text-caption">{{ item.description }}</div></div></template></v-radio></v-card>
+        <v-card v-else class="panel-card user-panel mb-7">
+          <v-card-text class="user-panel-body">
+            <div class="content-section-header mb-5">
+              <div><p class="eyebrow mb-2">Available now</p><h2 class="section-heading">Choose an item</h2></div>
+            </div>
+            <v-radio-group v-model="selectedItem" hide-details>
+              <v-card
+                v-for="item in state.availableItems"
+                :key="item.id"
+                variant="outlined"
+                class="selection-card mb-3 pa-2 clickable"
+                :class="{ 'selection-card--selected': selectedItem === item.id }"
+                @click="selectedItem = item.id"
+              >
+                <v-radio :value="item.id" color="primary">
+                  <template #label>
+                    <div class="available-item-label ml-2">
+                      <div class="available-item-heading"><strong>{{ item.name }}</strong><v-chip v-if="item.isTimed" size="x-small" color="warning" variant="tonal">Uses time</v-chip></div>
+                      <div class="muted text-caption">{{ item.description }}</div>
+                    </div>
+                  </template>
+                </v-radio>
+              </v-card>
             </v-radio-group>
             <div v-if="!state.availableItems.length" class="empty-state">No items are available right now.</div>
           </v-card-text>
-          <v-card-actions><v-spacer /><v-btn color="primary" size="large" :disabled="!selectedItem" :loading="loading" @click="checkout">Check out selection</v-btn></v-card-actions>
+          <v-card-actions class="user-panel-actions">
+            <v-spacer />
+            <v-btn color="primary" size="large" :disabled="!selectedItem" :loading="loading" @click="checkout">Check out selection</v-btn>
+          </v-card-actions>
         </v-card>
-        <v-card class="glass-card pa-3 pa-sm-6">
-          <v-card-text><p class="eyebrow mb-3">Earn more time</p><h2 class="section-heading mb-5">Chores</h2>
+        <v-card class="panel-card user-panel">
+          <v-card-text class="user-panel-body">
+            <div class="content-section-header mb-5">
+              <div><p class="eyebrow mb-2">Earn more time</p><h2 class="section-heading">Chores</h2></div>
+            </div>
             <div class="chore-list">
               <div v-for="chore in state.chores" :key="chore.id" class="chore-list-item">
                 <v-avatar color="secondary" variant="tonal"><v-icon icon="mdi-broom" /></v-avatar>
@@ -78,15 +131,174 @@ onBeforeUnmount(() => socket.off('state:changed', onChanged))
 </script>
 
 <style scoped>
-.pin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.available-item-label { min-width: 0; overflow-wrap: anywhere; }
-.chore-list { display: grid; gap: 10px; }
-.chore-list-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: rgba(255,255,255,.025); }
-.chore-copy { min-width: 0; }
-.chore-copy h3 { font-size: 1rem; line-height: 1.35; overflow-wrap: anywhere; }
-.chore-copy p { margin: 3px 0 0; line-height: 1.45; overflow-wrap: anywhere; }
-.chore-action { justify-self: end; }
+.user-page-header {
+  align-items: flex-end;
+}
+
+.pin-card,
+.user-panel {
+  overflow: hidden;
+}
+
+.pin-card-body,
+.user-panel-body {
+  padding: 32px;
+}
+
+.pin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pin-grid .v-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 58px !important;
+}
+
+.pin-grid .v-btn--icon {
+  border-radius: 12px !important;
+}
+
+.user-panel-actions {
+  min-height: 0;
+  padding: 0 32px 32px;
+}
+
+.user-checkout-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+}
+
+.user-checkout-copy {
+  min-width: 0;
+}
+
+.user-checkout-title {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 750;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.user-checkout-copy p {
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+
+.user-checkout-time {
+  min-width: max-content;
+  text-align: right;
+}
+
+.user-checkout-time > span {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.available-item-label {
+  min-width: 0;
+  padding-block: 4px;
+  overflow-wrap: anywhere;
+}
+
+.available-item-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.selection-card {
+  background: rgba(var(--v-theme-primary), .025);
+  transition: border-color .18s ease, background-color .18s ease;
+}
+
+.selection-card--selected,
+.selection-card:focus-within {
+  background: rgba(var(--v-theme-primary), .08);
+  border-color: rgb(var(--v-theme-primary)) !important;
+}
+
+.chore-list {
+  display: grid;
+  gap: 10px;
+}
+
+.chore-list-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(var(--v-theme-on-surface), .1);
+  border-radius: 16px;
+  background: rgba(var(--v-theme-secondary), .035);
+}
+
+.chore-copy {
+  min-width: 0;
+}
+
+.chore-copy h3 {
+  font-size: 1rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.chore-copy p {
+  margin: 3px 0 0;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.chore-action {
+  justify-self: end;
+}
+
 @media (max-width: 599px) {
+  .user-page-header {
+    align-items: flex-start;
+  }
+
+  .pin-card-body,
+  .user-panel-body {
+    padding: 24px;
+  }
+
+  .user-panel-actions {
+    padding: 0 24px 24px;
+  }
+
+  .user-panel-actions .v-btn {
+    width: 100%;
+  }
+
+  .user-checkout-summary {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .user-checkout-time {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    min-width: 0;
+    padding-top: 16px;
+    border-top: 1px solid rgba(var(--v-theme-on-surface), .1);
+    text-align: left;
+  }
+
+  .user-checkout-time > span {
+    margin-bottom: 0;
+  }
+
   .chore-list-item { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
   .chore-action { grid-column: 2; justify-self: start; }
 }
