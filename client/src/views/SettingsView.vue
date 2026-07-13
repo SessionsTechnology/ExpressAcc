@@ -38,20 +38,30 @@
 
       <v-window-item value="items">
         <v-card class="glass-card panel-card settings-panel pa-3 pa-sm-6"><v-card-text><div class="content-section-header settings-toolbar mb-5"><div><h2 class="section-heading">Shared items</h2><p class="muted">Assign an item to specific users, or leave the assignment empty so everyone with checkout access can use it.</p></div><v-btn color="primary" prepend-icon="mdi-plus" @click="addItem">Add item</v-btn></div>
-          <v-card v-for="(item,index) in items" :key="item.id || index" variant="outlined" class="settings-entry pa-4 mb-3">
-            <div class="settings-item-grid">
-              <v-text-field v-model="item.name" label="Item name" hide-details class="item-name" />
-              <v-text-field v-model="item.description" label="Description" hide-details class="item-description" />
-              <v-select v-model="item.assignedUserIds" :items="assignableUsers" item-title="name" item-value="id" label="Assigned users" multiple chips clearable hint="Empty means everyone with checkout access" persistent-hint class="item-assignees" />
-              <div class="settings-entry-controls item-controls"><v-switch v-model="item.isTimed" label="Timed" color="warning" hide-details class="settings-switch" /><v-switch v-model="item.disabled" label="Disabled" hide-details class="settings-switch" /><v-btn icon="mdi-delete-outline" color="error" variant="text" aria-label="Delete item" @click="items.splice(index,1)" /></div>
-            </div>
-          </v-card><div v-if="!items.length" class="empty-state">No items yet.</div>
+          <v-expansion-panels v-model="openItem" variant="accordion" class="settings-accordion">
+            <v-expansion-panel v-for="(item,index) in items" :key="accordionValue(item, 'item')" :value="accordionValue(item, 'item')" class="settings-entry">
+              <v-expansion-panel-title class="settings-accordion-title">{{ item.name?.trim() || 'New item' }}</v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <div class="settings-item-grid">
+                  <v-text-field v-model="item.name" label="Item name" hide-details class="item-name" />
+                  <v-text-field v-model="item.description" label="Description" hide-details class="item-description" />
+                  <v-select v-model="item.assignedUserIds" :items="assignableUsers" item-title="name" item-value="id" label="Assigned users" multiple chips clearable hint="Empty means everyone with checkout access" persistent-hint class="item-assignees" />
+                  <div class="settings-entry-controls item-controls"><v-switch v-model="item.isTimed" label="Timed" color="warning" hide-details class="settings-switch" /><v-switch v-model="item.disabled" label="Disabled" hide-details class="settings-switch" /><v-btn icon="mdi-delete-outline" color="error" variant="text" aria-label="Delete item" @click="removeItem(index, item)" /></div>
+                </div>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels><div v-if="!items.length" class="empty-state">No items yet.</div>
         </v-card-text><v-card-actions class="settings-card-actions"><v-btn color="primary" size="large" :loading="saving" @click="saveCollection('items', items)">Save items</v-btn></v-card-actions></v-card>
       </v-window-item>
 
       <v-window-item value="chores">
         <v-card class="glass-card panel-card settings-panel pa-3 pa-sm-6"><v-card-text><div class="content-section-header settings-toolbar mb-5"><div><h2 class="section-heading">Chores and rewards</h2><p class="muted">Submitted chores require admin approval. A 0-minute chore assigned to specific people must be approved before they can check out an item.</p></div><v-btn color="primary" prepend-icon="mdi-plus" @click="addChore">Add chore</v-btn></div>
-          <v-card v-for="(chore,index) in chores" :key="chore.id || index" variant="outlined" class="settings-entry pa-4 mb-4"><div class="settings-chore-grid"><v-text-field v-model="chore.title" label="Chore" hide-details="auto" class="chore-title" /><v-text-field v-model="chore.description" label="Description" hide-details="auto" class="chore-description" /><v-text-field v-model.number="chore.rewardMinutes" type="number" min="0" label="Reward" suffix="minutes" hide-details="auto" class="chore-reward" /><v-select v-model="chore.recurrence" :items="recurrences" label="Repeats" hide-details="auto" class="chore-recurrence" /><v-select v-model="chore.assignedUserIds" :items="assignableUsers" item-title="name" item-value="id" label="Assigned users" multiple chips hint="Empty means everyone" persistent-hint class="chore-assignees" /><div class="settings-chore-actions"><v-switch v-model="chore.disabled" label="Off" hide-details class="settings-switch" /><v-btn icon="mdi-delete-outline" color="error" variant="text" aria-label="Delete chore" @click="chores.splice(index,1)" /></div></div></v-card><div v-if="!chores.length" class="empty-state">No chores yet.</div>
+          <v-expansion-panels v-model="openChore" variant="accordion" class="settings-accordion">
+            <v-expansion-panel v-for="(chore,index) in chores" :key="accordionValue(chore, 'chore')" :value="accordionValue(chore, 'chore')" class="settings-entry">
+              <v-expansion-panel-title class="settings-accordion-title">{{ chore.title?.trim() || 'New chore' }}</v-expansion-panel-title>
+              <v-expansion-panel-text><div class="settings-chore-grid"><v-text-field v-model="chore.title" label="Chore" hide-details="auto" class="chore-title" /><v-text-field v-model="chore.description" label="Description" hide-details="auto" class="chore-description" /><v-text-field v-model.number="chore.rewardMinutes" type="number" min="0" label="Reward" suffix="minutes" hide-details="auto" class="chore-reward" /><v-select v-model="chore.recurrence" :items="recurrences" label="Repeats" hide-details="auto" class="chore-recurrence" /><v-select v-model="chore.assignedUserIds" :items="assignableUsers" item-title="name" item-value="id" label="Assigned users" multiple chips hint="Empty means everyone" persistent-hint class="chore-assignees" /><div class="settings-chore-actions"><v-switch v-model="chore.disabled" label="Off" hide-details class="settings-switch" /><v-btn icon="mdi-delete-outline" color="error" variant="text" aria-label="Delete chore" @click="removeChore(index, chore)" /></div></div></v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels><div v-if="!chores.length" class="empty-state">No chores yet.</div>
         </v-card-text><v-card-actions class="settings-card-actions"><v-btn color="primary" size="large" :loading="saving" @click="saveCollection('chores', chores)">Save chores</v-btn></v-card-actions></v-card>
       </v-window-item>
 
@@ -64,18 +74,22 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, toRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../lib/api.js'
-const router = useRouter(); const ready = ref(false); const saving = ref(false); const tab = ref('general'); const error = ref(''); const notice = ref(''); const backupFile = ref(null)
+const router = useRouter(); const ready = ref(false); const saving = ref(false); const tab = ref('general'); const error = ref(''); const notice = ref(''); const backupFile = ref(null); const openItem = ref(null); const openChore = ref(null)
 const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; const recurrences = [{title:'One time',value:'once'},{title:'Daily',value:'daily'},{title:'Weekly',value:'weekly'}]
 const guessedZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; const timeZones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [guessedZone, 'UTC']
 const settings = reactive({ applicationName:'', password:'', timeZone:guessedZone, darkMode:false, kioskMessage:'', kioskTimeoutSeconds:30, dailyTimeMinutes:Object.fromEntries(weekdays.map(day => [day,0])) }); const users = ref([]); const items = ref([]); const chores = ref([])
 const assignableUsers = computed(() => users.value.filter((user) => user.id && !user.disabled))
+const accordionValues = new WeakMap(); let nextAccordionValue = 0
+function accordionValue(entry, type) { const rawEntry = toRaw(entry); if (rawEntry.id) return `${type}-${rawEntry.id}`; if (!accordionValues.has(rawEntry)) accordionValues.set(rawEntry, `${type}-new-${++nextAccordionValue}`); return accordionValues.get(rawEntry) }
 async function load() { try { const state = await api('/admin/state'); Object.assign(settings, state.settings, { password: '' }); users.value = state.users.map(user => ({ ...user, pin:'', clearPin:false })); items.value = state.items; chores.value = state.chores } catch (exception) { if (exception.status === 401) return router.replace('/admin/login'); error.value = exception.message } finally { ready.value = true } }
 function addUser() { users.value.push({ name:'', pin:'', disabled:false, checkoutEnabled:true, hasPin:false, clearPin:false }) }
-function addItem() { items.value.push({ name:'', description:'', isTimed:true, disabled:false, assignedUserIds:[] }) }
-function addChore() { chores.value.push({ title:'', description:'', rewardMinutes:15, recurrence:'daily', assignedUserIds:[], disabled:false }) }
+function addItem() { const item = { name:'', description:'', isTimed:true, disabled:false, assignedUserIds:[] }; items.value.unshift(item); openItem.value = accordionValue(item, 'item') }
+function addChore() { const chore = { title:'', description:'', rewardMinutes:15, recurrence:'daily', assignedUserIds:[], disabled:false }; chores.value.unshift(chore); openChore.value = accordionValue(chore, 'chore') }
+function removeItem(index, item) { items.value.splice(index, 1); if (openItem.value === accordionValue(item, 'item')) openItem.value = null }
+function removeChore(index, chore) { chores.value.splice(index, 1); if (openChore.value === accordionValue(chore, 'chore')) openChore.value = null }
 async function run(action, success) { saving.value = true; error.value = ''; notice.value = ''; try { await action(); notice.value = success; await load() } catch (exception) { error.value = exception.message } finally { saving.value = false } }
 const saveSettings = () => run(() => api('/admin/settings', { method:'PATCH', body:settings }), 'General settings saved.')
 const saveCollection = (name, collection) => run(() => api(`/admin/${name}`, { method:'PUT', body:collection }), `${name[0].toUpperCase()+name.slice(1)} saved.`)
@@ -179,6 +193,22 @@ onMounted(load)
 
 .settings-entry {
   overflow: visible;
+}
+
+.settings-accordion {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.settings-accordion-title {
+  min-height: 58px;
+  font-weight: 750;
+  letter-spacing: -.01em;
+}
+
+.settings-accordion :deep(.v-expansion-panel-text__wrapper) {
+  padding: 4px 16px 20px;
 }
 
 .settings-user-grid,
@@ -341,8 +371,8 @@ onMounted(load)
     border-radius: 14px;
   }
 
-  .settings-entry {
-    padding: 14px !important;
+  .settings-accordion :deep(.v-expansion-panel-text__wrapper) {
+    padding: 2px 14px 16px;
   }
 
   .settings-user-grid,
