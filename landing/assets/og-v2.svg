@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#667cf0"/>
+      <stop offset="1" stop-color="#4f63dd"/>
+    </linearGradient>
+    <linearGradient id="fade" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef2ff"/>
+      <stop offset="1" stop-color="#f4fbf8"/>
+    </linearGradient>
+    <linearGradient id="progress" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6075e8"/>
+      <stop offset="1" stop-color="#8f7ae0"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="150%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#253455" flood-opacity=".16"/>
+    </filter>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M36 0H0V36" fill="none" stroke="#5269e8" stroke-opacity=".045"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="#f4f7fb"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <circle cx="86" cy="70" r="250" fill="#dfe6ff" opacity=".58"/>
+  <circle cx="1130" cy="550" r="280" fill="#dff6ed" opacity=".7"/>
+
+  <g transform="translate(64 55)">
+    <rect width="52" height="52" rx="17" fill="url(#brand)"/>
+    <path d="M13 25.5 26 14l13 11.5v14a2 2 0 0 1-2 2H15a2 2 0 0 1-2-2v-14Z" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M20 30c0-3 3.8-4.1 6-1.6 2.2-2.5 6-1.4 6 1.6 0 3.1-3.2 5.2-6 7.2-2.8-2-6-4.1-6-7.2Z" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="50" cy="50" r="10" fill="#3eb58b" stroke="#fff" stroke-width="4"/>
+    <text x="72" y="25" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="25" font-weight="800" letter-spacing="-1">ExpressACC</text>
+    <text x="72" y="45" fill="#68758b" font-family="Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="2.3">FAMILY HOME BASE</text>
+  </g>
+
+  <g transform="translate(64 163)">
+    <rect width="250" height="30" rx="15" fill="#e9edff" stroke="#d5ddff"/>
+    <circle cx="18" cy="15" r="4" fill="#3eb58b"/>
+    <text x="31" y="19" fill="#4054c7" font-family="Arial, sans-serif" font-size="10" font-weight="800" letter-spacing="1.8">OPEN SOURCE · SELF-HOSTED</text>
+  </g>
+
+  <text x="64" y="276" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="68" font-weight="800" letter-spacing="-3.2">Everything shared.</text>
+  <text x="64" y="353" fill="#5269e8" font-family="Avenir Next, Arial, sans-serif" font-size="68" font-weight="800" letter-spacing="-3.2">Nothing missed.</text>
+  <text x="67" y="404" fill="#68758b" font-family="Arial, sans-serif" font-size="20">Shared devices, daily screen time, and chores</text>
+  <text x="67" y="435" fill="#68758b" font-family="Arial, sans-serif" font-size="20">in one private family home base.</text>
+
+  <g transform="translate(66 495)" font-family="Arial, sans-serif" font-size="13" font-weight="700">
+    <circle cx="7" cy="-4" r="7" fill="#e7f8f1"/>
+    <path d="m3 -4 3 3 5-7" fill="none" stroke="#3eb58b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="23" y="1" fill="#526078">Private by design</text>
+    <circle cx="168" cy="-4" r="7" fill="#e7f8f1"/>
+    <path d="m164 -4 3 3 5-7" fill="none" stroke="#3eb58b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="184" y="1" fill="#526078">Live across screens</text>
+  </g>
+
+  <g transform="translate(690 91)" filter="url(#shadow)">
+    <rect width="500" height="455" rx="27" fill="#fff" stroke="#d5dce9"/>
+    <path d="M0 27A27 27 0 0 1 27 0h446a27 27 0 0 1 27 27v22H0Z" fill="#f1f4f9"/>
+    <circle cx="20" cy="25" r="4" fill="#c5cdda"/>
+    <circle cx="33" cy="25" r="4" fill="#c5cdda"/>
+    <circle cx="46" cy="25" r="4" fill="#c5cdda"/>
+    <text x="224" y="29" fill="#768298" font-family="Arial, sans-serif" font-size="8">home.local</text>
+    <rect y="49" width="500" height="63" fill="#fff"/>
+    <rect x="19" y="64" width="34" height="34" rx="11" fill="url(#brand)"/>
+    <path d="m28 80 8-7 8 7v9H28Z" fill="none" stroke="#fff" stroke-width="1.5"/>
+    <text x="63" y="79" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="12" font-weight="800">Home Hub</text>
+    <text x="63" y="94" fill="#68758b" font-family="Arial, sans-serif" font-size="6" font-weight="700" letter-spacing="1.2">FAMILY HOME BASE</text>
+    <rect x="416" y="74" width="64" height="20" rx="10" fill="#e7f8f1"/>
+    <circle cx="429" cy="84" r="3" fill="#3eb58b"/>
+    <text x="437" y="87" fill="#278162" font-family="Arial, sans-serif" font-size="7" font-weight="700">Up to date</text>
+
+    <rect y="112" width="500" height="343" rx="0 0 27 27" fill="url(#fade)"/>
+    <text x="25" y="148" fill="#4054c7" font-family="Arial, sans-serif" font-size="7" font-weight="800" letter-spacing="1.3">FAMILY SPACE</text>
+    <text x="25" y="181" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="-1">Good afternoon</text>
+    <text x="414" y="178" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="16" font-weight="800">3:42 PM</text>
+
+    <rect x="25" y="202" width="450" height="39" rx="11" fill="#e9edff" stroke="#d9e0ff"/>
+    <path d="M40 215h13v8h-7l-4 4v-4h-2Z" fill="none" stroke="#5269e8" stroke-width="1.5" stroke-linejoin="round"/>
+    <text x="63" y="226" fill="#4054c7" font-family="Arial, sans-serif" font-size="9" font-weight="600">Homework and backpacks first, please.</text>
+
+    <text x="25" y="269" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="13" font-weight="800">Choose your profile</text>
+    <text x="407" y="269" fill="#68758b" font-family="Arial, sans-serif" font-size="7">3 profiles</text>
+
+    <g transform="translate(25 284)">
+      <rect width="140" height="115" rx="14" fill="#fff" stroke="#e2e7f0"/>
+      <circle cx="24" cy="25" r="13" fill="#6579e8"/>
+      <text x="20" y="29" fill="#fff" font-family="Arial, sans-serif" font-size="10" font-weight="800">A</text>
+      <text x="44" y="23" fill="#182238" font-family="Arial, sans-serif" font-size="10" font-weight="700">Alex</text>
+      <text x="44" y="36" fill="#68758b" font-family="Arial, sans-serif" font-size="7">Switch</text>
+      <text x="12" y="64" fill="#68758b" font-family="Arial, sans-serif" font-size="6" font-weight="700">TODAY’S TIME</text>
+      <text x="12" y="84" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="16" font-weight="800">42m</text>
+      <rect x="12" y="93" width="39" height="14" rx="7" fill="#fff0ec"/>
+      <text x="20" y="103" fill="#ae513f" font-family="Arial, sans-serif" font-size="6" font-weight="700">Item out</text>
+    </g>
+    <g transform="translate(180 284)">
+      <rect width="140" height="115" rx="14" fill="#fbf9ff" stroke="#e3dcfa"/>
+      <circle cx="24" cy="25" r="13" fill="#8e75db"/>
+      <text x="20" y="29" fill="#fff" font-family="Arial, sans-serif" font-size="10" font-weight="800">R</text>
+      <text x="44" y="23" fill="#182238" font-family="Arial, sans-serif" font-size="10" font-weight="700">Rowan</text>
+      <text x="44" y="36" fill="#68758b" font-family="Arial, sans-serif" font-size="7">Chores assigned</text>
+      <text x="12" y="64" fill="#68758b" font-family="Arial, sans-serif" font-size="6" font-weight="700">ASSIGNED CHORES</text>
+      <text x="12" y="84" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="16" font-weight="800">2 chores</text>
+      <rect x="12" y="93" width="48" height="14" rx="7" fill="#f0ecff"/>
+      <text x="19" y="103" fill="#6650bb" font-family="Arial, sans-serif" font-size="6" font-weight="700">Chores first</text>
+    </g>
+    <g transform="translate(335 284)">
+      <rect width="140" height="115" rx="14" fill="#fff" stroke="#e2e7f0"/>
+      <circle cx="24" cy="25" r="13" fill="#57b995"/>
+      <text x="20" y="29" fill="#fff" font-family="Arial, sans-serif" font-size="10" font-weight="800">S</text>
+      <text x="44" y="23" fill="#182238" font-family="Arial, sans-serif" font-size="10" font-weight="700">Sam</text>
+      <text x="44" y="36" fill="#68758b" font-family="Arial, sans-serif" font-size="7">Ready</text>
+      <text x="12" y="64" fill="#68758b" font-family="Arial, sans-serif" font-size="6" font-weight="700">TODAY’S TIME</text>
+      <text x="12" y="84" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="16" font-weight="800">1h 15m</text>
+      <rect x="12" y="93" width="45" height="14" rx="7" fill="#e7f8f1"/>
+      <text x="19" y="103" fill="#278162" font-family="Arial, sans-serif" font-size="6" font-weight="700">Available</text>
+    </g>
+
+    <rect x="25" y="414" width="450" height="27" rx="9" fill="#fff" stroke="#e2e7f0"/>
+    <circle cx="42" cy="427.5" r="9" fill="#f0ecff"/>
+    <path d="m38 428 3 3 5-6" fill="none" stroke="#7861d8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="57" y="425" fill="#182238" font-family="Arial, sans-serif" font-size="8" font-weight="700">Unload the dishwasher</text>
+    <text x="57" y="435" fill="#68758b" font-family="Arial, sans-serif" font-size="6">Assigned to Rowan · Daily</text>
+    <rect x="421" y="420" width="43" height="14" rx="7" fill="#e7f8f1"/>
+    <text x="431" y="430" fill="#278162" font-family="Arial, sans-serif" font-size="6" font-weight="700">+15 min</text>
+  </g>
+
+  <g transform="translate(962 523) rotate(-3)" filter="url(#shadow)">
+    <rect width="174" height="58" rx="16" fill="#fff" stroke="#d5dce9"/>
+    <rect x="14" y="13" width="32" height="32" rx="10" fill="#3eb58b"/>
+    <path d="m22 29 5 5 10-12" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="57" y="27" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="12" font-weight="800">Chore approved</text>
+    <text x="57" y="42" fill="#68758b" font-family="Arial, sans-serif" font-size="8">Reward added</text>
+  </g>
+</svg>
