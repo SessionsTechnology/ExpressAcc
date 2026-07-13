@@ -10,6 +10,7 @@
         <v-btn variant="text" prepend-icon="mdi-logout" @click="logout">Sign out</v-btn>
       </div>
     </div>
+    <v-alert v-if="notice" type="success" variant="tonal" closable class="mb-6" @click:close="notice = ''">{{ notice }}</v-alert>
     <v-alert v-if="error" type="error" variant="tonal" closable class="mb-6" @click:close="error = ''">{{ error }}</v-alert>
 
     <v-row class="metric-grid mb-7">
@@ -59,7 +60,7 @@
             <div class="stat-number" :class="{ 'text-error': user.timeRemainingSeconds === 0 }">{{ formatDuration(user.timeRemainingSeconds) }}</div>
             <div class="muted text-caption">remaining today</div>
           </v-card-text>
-          <v-card-actions class="user-time-actions"><v-btn size="small" variant="tonal" color="warning" @click="adjust(user, -900)">−15m</v-btn><v-btn size="small" variant="tonal" color="success" @click="adjust(user, 900)">+15m</v-btn><v-spacer /><v-chip v-if="user.checkout" color="accent" size="small" variant="tonal">In use</v-chip></v-card-actions>
+          <v-card-actions class="user-time-actions"><v-btn size="small" variant="tonal" color="warning" @click="adjust(user, -900)">−15m</v-btn><v-btn size="small" variant="tonal" color="success" @click="adjust(user, 900)">+15m</v-btn><v-btn size="small" variant="tonal" prepend-icon="mdi-pencil-outline" @click="openTimeDialog(user)">Set</v-btn><v-btn size="small" variant="text" prepend-icon="mdi-restore" @click="resetTime(user)">Default</v-btn><v-spacer /><v-chip v-if="user.checkout" color="accent" size="small" variant="tonal">In use</v-chip></v-card-actions>
         </v-card>
       </v-col>
       <v-col v-if="!activeUsers.length" cols="12"><div class="empty-state">Add a user in Settings to get started.</div></v-col>
@@ -77,6 +78,16 @@
               </v-list-item>
             </v-list>
             <div v-else class="empty-state">Nothing is waiting for approval.</div>
+            <template v-if="approved.length">
+              <v-divider class="my-6" />
+              <div class="reviewed-heading mb-2"><h3 class="text-subtitle-1 font-weight-bold">Recently approved</h3><span class="muted text-caption">Reset an approval made by mistake.</span></div>
+              <v-list bg-color="transparent">
+                <v-list-item v-for="completion in approved" :key="completion.id" :title="completion.choreTitle" :subtitle="`${completion.userName} · ${formatDate(completion.reviewedAt)}`" class="approval-item mb-2">
+                  <template #prepend><v-avatar color="success" variant="tonal"><v-icon icon="mdi-check" /></v-avatar></template>
+                  <template #append><v-btn prepend-icon="mdi-restore" size="small" variant="tonal" @click="openResetDialog(completion)">Reset</v-btn></template>
+                </v-list-item>
+              </v-list>
+            </template>
           </v-card-text>
         </v-card>
       </v-col>
@@ -87,6 +98,26 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <v-dialog v-model="timeDialog" max-width="480">
+      <v-card class="pa-2">
+        <v-card-title>Set {{ selectedUser?.name }}’s time</v-card-title>
+        <v-card-text>
+          <p class="muted mb-5">This replaces the remaining allowance for today only. The daily default will apply again tomorrow.</p>
+          <v-alert v-if="dialogError" type="error" variant="tonal" class="mb-4">{{ dialogError }}</v-alert>
+          <v-row><v-col cols="6"><v-text-field v-model.number="timeHours" label="Hours" type="number" min="0" max="24" /></v-col><v-col cols="6"><v-text-field v-model.number="timeMinutes" label="Minutes" type="number" min="0" max="59" /></v-col></v-row>
+        </v-card-text>
+        <v-card-actions><v-spacer /><v-btn variant="text" @click="timeDialog = false">Cancel</v-btn><v-btn color="primary" :loading="saving" @click="setTime">Set time</v-btn></v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="resetDialog" max-width="520">
+      <v-card class="pa-2">
+        <v-card-title>Reset this chore?</v-card-title>
+        <v-card-text><p class="mb-2"><strong>{{ resetTarget?.choreTitle }}</strong> for {{ resetTarget?.userName }} will become available to submit again.</p><p class="muted mb-0">Any reward from this approval that is still part of today’s allowance will be removed.</p></v-card-text>
+        <v-card-actions><v-spacer /><v-btn variant="text" @click="resetDialog = false">Cancel</v-btn><v-btn color="warning" prepend-icon="mdi-restore" :loading="saving" @click="resetCompletion">Reset chore</v-btn></v-card-actions>
+      </v-card>
+    </v-dialog>
   </section>
 </template>
 
@@ -96,13 +127,26 @@ import { useRouter } from 'vue-router'
 import { api } from '../lib/api.js'
 import { formatDate, formatDuration } from '../lib/format.js'
 const router = useRouter(); const socket = inject('socket')
-const ready = ref(false); const error = ref(''); const users = ref([]); const items = ref([]); const completions = ref([]); const activity = ref([])
+const ready = ref(false); const saving = ref(false); const error = ref(''); const notice = ref(''); const users = ref([]); const items = ref([]); const completions = ref([]); const activity = ref([])
+const timeDialog = ref(false); const selectedUser = ref(null); const timeHours = ref(0); const timeMinutes = ref(0); const dialogError = ref('')
+const resetDialog = ref(false); const resetTarget = ref(null)
 const activeUsers = computed(() => users.value.filter((user) => !user.disabled))
 const pending = computed(() => completions.value.filter((completion) => completion.status === 'pending'))
+const approved = computed(() => completions.value.filter((completion) => completion.status === 'approved').slice(0, 5))
 const availableItemCount = computed(() => Math.max(0, items.value.filter((item) => !item.disabled).length - users.value.filter((user) => user.checkout).length))
 async function load() { try { const state = await api('/admin/state'); users.value = state.users; items.value = state.items; completions.value = state.completions; activity.value = state.activity } catch (exception) { if (exception.status === 401) return router.replace('/admin/login'); error.value = exception.message } finally { ready.value = true } }
 async function adjust(user, deltaSeconds) { try { await api(`/admin/users/${user.id}/time`, { method: 'POST', body: { deltaSeconds } }); await load() } catch (exception) { error.value = exception.message } }
 async function review(completion, status) { try { await api(`/admin/completions/${completion.id}/review`, { method: 'POST', body: { status } }); await load() } catch (exception) { error.value = exception.message } }
+function openTimeDialog(user) { selectedUser.value = user; timeHours.value = Math.floor(user.timeRemainingSeconds / 3600); timeMinutes.value = Math.floor((user.timeRemainingSeconds % 3600) / 60); dialogError.value = ''; timeDialog.value = true }
+async function setTime() {
+  const hours = Number(timeHours.value); const minutes = Number(timeMinutes.value); const seconds = (hours * 60 + minutes) * 60
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || minutes < 0 || minutes > 59 || seconds > 86400) { dialogError.value = 'Enter a time between 0 and 24 hours.'; return }
+  saving.value = true; dialogError.value = ''
+  try { await api(`/admin/users/${selectedUser.value.id}/time`, { method: 'PUT', body: { timeRemainingSeconds: seconds } }); notice.value = `${selectedUser.value.name}’s time was set.`; timeDialog.value = false; await load() } catch (exception) { dialogError.value = exception.message } finally { saving.value = false }
+}
+async function resetTime(user) { try { await api(`/admin/users/${user.id}/time/reset`, { method: 'POST' }); notice.value = `${user.name}’s time was reset to today’s default.`; await load() } catch (exception) { error.value = exception.message } }
+function openResetDialog(completion) { resetTarget.value = completion; resetDialog.value = true }
+async function resetCompletion() { saving.value = true; try { await api(`/admin/completions/${resetTarget.value.id}/reset`, { method: 'POST' }); notice.value = `${resetTarget.value.choreTitle} was reset for ${resetTarget.value.userName}.`; resetDialog.value = false; await load() } catch (exception) { error.value = exception.message } finally { saving.value = false } }
 async function logout() { await api('/admin/logout', { method: 'POST' }); await router.replace('/') }
 const onChanged = () => load()
 onMounted(() => { load(); socket.on('state:changed', onChanged); socket.on('checkout:update', ({ users: next }) => { users.value = next }) })
@@ -115,7 +159,8 @@ onBeforeUnmount(() => { socket.off('state:changed', onChanged); socket.off('chec
 .dashboard-panel-title,
 .user-card-identity,
 .user-time-actions,
-.approval-actions {
+.approval-actions,
+.reviewed-heading {
   display: flex;
   align-items: center;
 }
@@ -184,6 +229,11 @@ onBeforeUnmount(() => { socket.off('state:changed', onChanged); socket.off('chec
   overflow-wrap: anywhere;
 }
 
+.user-card-identity span {
+  display: block;
+  white-space: normal;
+}
+
 .user-time-actions {
   flex-wrap: wrap;
   gap: 4px;
@@ -192,11 +242,21 @@ onBeforeUnmount(() => { socket.off('state:changed', onChanged); socket.off('chec
 .dashboard-panel-title {
   flex-wrap: wrap;
   gap: 10px;
+  white-space: normal;
 }
 
 .approval-item {
   border: 1px solid rgba(var(--v-theme-on-surface), .08);
   border-radius: 16px;
+}
+
+.approval-item :deep(.v-list-item-subtitle) {
+  white-space: normal;
+}
+
+.reviewed-heading {
+  justify-content: space-between;
+  gap: 12px;
 }
 
 @media (max-width: 599px) {

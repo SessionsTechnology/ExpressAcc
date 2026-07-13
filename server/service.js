@@ -69,6 +69,11 @@ function resetDayIfNeeded(data, now = new Date()) {
   return changed
 }
 
+function defaultTimeSeconds(data, now = new Date()) {
+  const today = localDate(now, data.settings.timeZone)
+  return Math.max(0, Number(data.settings.dailyTimeMinutes[today.weekday] || 0) * 60)
+}
+
 function reconcileUser(data, user, now = new Date()) {
   const checkout = data.checkouts.find((entry) => entry.userId === user.id)
   const item = checkout && data.items.find((entry) => entry.id === checkout.itemId)
@@ -271,6 +276,34 @@ export function createService(database) {
       })
     },
 
+    async setTime(userId, timeRemainingSeconds) {
+      return database.transaction((data) => {
+        resetDayIfNeeded(data)
+        const user = data.users.find((entry) => entry.id === userId)
+        if (!user) throw new AppError(404, 'User not found.')
+        reconcileUser(data, user)
+        user.timeRemainingSeconds = timeRemainingSeconds
+        const checkout = data.checkouts.find((entry) => entry.userId === user.id)
+        if (checkout) checkout.remainingAtCheckout = user.timeRemainingSeconds
+        log(data, 'time', `Set ${user.name}’s time`, { timeRemainingSeconds })
+        return publicUser(user, data)
+      })
+    },
+
+    async resetTime(userId) {
+      return database.transaction((data) => {
+        resetDayIfNeeded(data)
+        const user = data.users.find((entry) => entry.id === userId)
+        if (!user) throw new AppError(404, 'User not found.')
+        reconcileUser(data, user)
+        user.timeRemainingSeconds = defaultTimeSeconds(data)
+        const checkout = data.checkouts.find((entry) => entry.userId === user.id)
+        if (checkout) checkout.remainingAtCheckout = user.timeRemainingSeconds
+        log(data, 'time', `Reset ${user.name}’s time to the daily default`, { timeRemainingSeconds: user.timeRemainingSeconds })
+        return publicUser(user, data)
+      })
+    },
+
     async unlockUser(userId, pin) {
       const user = state().users.find((entry) => entry.id === userId && !entry.disabled)
       if (!user) throw new AppError(404, 'User not found.')
@@ -351,6 +384,7 @@ export function createService(database) {
 
     async reviewCompletion(completionId, status) {
       return database.transaction((data) => {
+        resetDayIfNeeded(data)
         const completion = data.choreCompletions.find((entry) => entry.id === completionId)
         if (!completion || completion.status !== 'pending') throw new AppError(404, 'Pending completion not found.')
         const user = data.users.find((entry) => entry.id === completion.userId)
@@ -359,12 +393,42 @@ export function createService(database) {
         completion.reviewedAt = new Date().toISOString()
         if (status === 'approved' && user && chore) {
           reconcileUser(data, user)
-          user.timeRemainingSeconds += chore.rewardMinutes * 60
+          completion.rewardGrantedSeconds = chore.rewardMinutes * 60
+          completion.rewardGrantedTimeDate = user.timeDate
+          user.timeRemainingSeconds += completion.rewardGrantedSeconds
           const checkout = data.checkouts.find((entry) => entry.userId === user.id)
           if (checkout) checkout.remainingAtCheckout = user.timeRemainingSeconds
         }
         log(data, 'chore', `${chore?.title || 'Chore'} ${status} for ${user?.name || 'user'}`, { completionId })
         return completion
+      })
+    },
+
+    async resetCompletion(completionId) {
+      return database.transaction((data) => {
+        resetDayIfNeeded(data)
+        const completion = data.choreCompletions.find((entry) => entry.id === completionId)
+        if (!completion || completion.status !== 'approved') throw new AppError(404, 'Approved completion not found.')
+        const user = data.users.find((entry) => entry.id === completion.userId)
+        const chore = data.chores.find((entry) => entry.id === completion.choreId)
+        let reversedSeconds = 0
+        if (user) {
+          const reviewedDate = completion.reviewedAt
+            ? localDate(new Date(completion.reviewedAt), data.settings.timeZone).key
+            : null
+          const rewardDate = completion.rewardGrantedTimeDate || reviewedDate
+          const rewardSeconds = Number(completion.rewardGrantedSeconds ?? Number(chore?.rewardMinutes || 0) * 60)
+          if (rewardDate === user.timeDate && rewardSeconds > 0) {
+            reconcileUser(data, user)
+            reversedSeconds = Math.min(user.timeRemainingSeconds, rewardSeconds)
+            user.timeRemainingSeconds -= reversedSeconds
+            const checkout = data.checkouts.find((entry) => entry.userId === user.id)
+            if (checkout) checkout.remainingAtCheckout = user.timeRemainingSeconds
+          }
+        }
+        data.choreCompletions = data.choreCompletions.filter((entry) => entry.id !== completionId)
+        log(data, 'chore', `Reset “${chore?.title || 'Chore'}” for ${user?.name || 'user'}`, { completionId, reversedSeconds })
+        return { reset: true, reversedSeconds }
       })
     },
 

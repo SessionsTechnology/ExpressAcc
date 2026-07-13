@@ -71,10 +71,16 @@ export function createApiRouter({ service, notify }) {
     const deltaSeconds = z.object({ deltaSeconds: z.coerce.number().int().min(-86400).max(86400) }).parse(request.body).deltaSeconds
     return service.adjustTime(request.params.userId, deltaSeconds)
   }))
+  router.put('/admin/users/:userId/time', requireAdmin, changed(async (request) => {
+    const timeRemainingSeconds = z.object({ timeRemainingSeconds: z.coerce.number().int().min(0).max(86400) }).parse(request.body).timeRemainingSeconds
+    return service.setTime(request.params.userId, timeRemainingSeconds)
+  }))
+  router.post('/admin/users/:userId/time/reset', requireAdmin, changed(async (request) => service.resetTime(request.params.userId)))
   router.post('/admin/completions/:completionId/review', requireAdmin, changed(async (request) => {
     const status = z.object({ status: z.enum(['approved', 'rejected']) }).parse(request.body).status
     return service.reviewCompletion(request.params.completionId, status)
   }))
+  router.post('/admin/completions/:completionId/reset', requireAdmin, changed(async (request) => service.resetCompletion(request.params.completionId)))
   router.get('/admin/export', requireAdmin, (_request, response) => {
     response.setHeader('Content-Disposition', `attachment; filename="expressacc-backup-${new Date().toISOString().slice(0, 10)}.json"`)
     response.json(service.exportData())

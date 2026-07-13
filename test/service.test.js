@@ -74,6 +74,19 @@ test('timed checkouts use elapsed time and persist the remainder on check-in', a
   assert.ok(stopped.timeRemainingSeconds <= 3590)
 })
 
+test('admins can set an exact allowance and reset it to today’s default', async (t) => {
+  const { database, service, user, item } = await fixture(t)
+  await service.checkout(user.id, item.id)
+
+  const overridden = await service.setTime(user.id, 1234)
+  assert.equal(overridden.timeRemainingSeconds, 1234)
+  assert.equal(database.read().checkouts[0].remainingAtCheckout, 1234)
+
+  const reset = await service.resetTime(user.id)
+  assert.equal(reset.timeRemainingSeconds, 3600)
+  assert.equal(database.read().checkouts[0].remainingAtCheckout, 3600)
+})
+
 test('one item cannot be checked out twice', async (t) => {
   const { service, user, item } = await fixture(t)
   await service.saveUsers([{ id: user.id, name: 'Alex' }, { name: 'Sam' }])
@@ -92,6 +105,24 @@ test('approved chores add their reward to the user allowance once', async (t) =>
   const after = (await service.getPublicState()).users[0].timeRemainingSeconds
   assert.equal(after, before + 900)
   await assert.rejects(() => service.reviewCompletion(completion.id, 'approved'), (error) => error.status === 404)
+})
+
+test('resetting an approved chore reverses its current-day reward and permits resubmission', async (t) => {
+  const { service, user } = await fixture(t)
+  await service.saveChores([{ title: 'Dishes', description: '', rewardMinutes: 15, recurrence: 'daily', assignedUserIds: [user.id] }])
+  const chore = (await service.getAdminState()).chores[0]
+  const before = (await service.getPublicState()).users[0].timeRemainingSeconds
+  const completion = await service.completeChore(user.id, chore.id)
+  const approved = await service.reviewCompletion(completion.id, 'approved')
+
+  assert.equal(approved.rewardGrantedSeconds, 900)
+  assert.equal((await service.getPublicState()).users[0].timeRemainingSeconds, before + 900)
+
+  const result = await service.resetCompletion(completion.id)
+  assert.deepEqual(result, { reset: true, reversedSeconds: 900 })
+  assert.equal((await service.getPublicState()).users[0].timeRemainingSeconds, before)
+  assert.equal((await service.getUserState(user.id)).chores[0].completionStatus, null)
+  assert.equal((await service.completeChore(user.id, chore.id)).status, 'pending')
 })
 
 test('assigned zero-minute chores require approval before any item can be checked out', async (t) => {

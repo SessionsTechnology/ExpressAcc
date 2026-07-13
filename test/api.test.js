@@ -41,4 +41,41 @@ test('HTTP setup and admin authentication protect private state', async (t) => {
   const authorized = await fetch(`${base}/admin/state`, { headers: { cookie } })
   assert.equal(authorized.status, 200)
   assert.equal((await authorized.json()).settings.applicationName, 'API Test')
+
+  const savedUsers = await fetch(`${base}/admin/users`, {
+    method: 'PUT', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify([{ name: 'Alex' }]),
+  })
+  assert.equal(savedUsers.status, 200)
+  const user = (await savedUsers.json())[0]
+
+  const setTime = await fetch(`${base}/admin/users/${user.id}/time`, {
+    method: 'PUT', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ timeRemainingSeconds: 1800 }),
+  })
+  assert.equal(setTime.status, 200)
+  assert.equal((await setTime.json()).timeRemainingSeconds, 1800)
+  const resetTime = await fetch(`${base}/admin/users/${user.id}/time/reset`, { method: 'POST', headers: { cookie } })
+  assert.equal(resetTime.status, 200)
+  assert.equal((await resetTime.json()).timeRemainingSeconds, 0)
+
+  const savedChores = await fetch(`${base}/admin/chores`, {
+    method: 'PUT', headers: { cookie, 'content-type': 'application/json' },
+    body: JSON.stringify([{ title: 'Dishes', rewardMinutes: 10, recurrence: 'daily', assignedUserIds: [user.id] }]),
+  })
+  assert.equal(savedChores.status, 200)
+  const chore = (await savedChores.json())[0]
+  const unlock = await fetch(`${base}/users/${user.id}/unlock`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin: '' }),
+  })
+  const userToken = (await unlock.json()).token
+  const submitted = await fetch(`${base}/users/${user.id}/chores/${chore.id}/complete`, {
+    method: 'POST', headers: { authorization: `Bearer ${userToken}` },
+  })
+  const completion = await submitted.json()
+  const approved = await fetch(`${base}/admin/completions/${completion.id}/review`, {
+    method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ status: 'approved' }),
+  })
+  assert.equal(approved.status, 200)
+  const resetCompletion = await fetch(`${base}/admin/completions/${completion.id}/reset`, { method: 'POST', headers: { cookie } })
+  assert.equal(resetCompletion.status, 200)
+  assert.equal((await resetCompletion.json()).reset, true)
 })
