@@ -136,21 +136,30 @@ export function createService(database) {
     await ensureDailyReset()
     const data = state()
     const activeUsers = data.users.filter((user) => !user.disabled)
-    return {
-      applicationName: data.settings.applicationName,
-      users: activeUsers.map((user) => publicUser(user, data)),
-      chores: data.chores.filter((chore) => !chore.disabled).map((chore) => ({
+    const today = localDate(new Date(), data.settings.timeZone)
+    const outstandingChores = data.chores.filter((chore) => !chore.disabled).map((chore) => {
+      const assignedUsers = activeUsers.filter((user) => chore.assignedUserIds.length === 0 || chore.assignedUserIds.includes(user.id))
+      const assignees = assignedUsers
+        .filter((user) => choreCompletion(data, user.id, chore, today.key)?.status !== 'approved')
+        .map((user) => ({ id: user.id, name: user.name }))
+      return {
         id: chore.id,
         title: chore.title,
         description: chore.description,
         recurrence: chore.recurrence,
         rewardMinutes: chore.rewardMinutes,
-        assignedToEveryone: chore.assignedUserIds.length === 0,
+        assignedToEveryone: chore.assignedUserIds.length === 0 && assignees.length === activeUsers.length,
         assignedUserIds: chore.assignedUserIds,
-        assignees: activeUsers
-          .filter((user) => chore.assignedUserIds.length === 0 || chore.assignedUserIds.includes(user.id))
-          .map((user) => ({ id: user.id, name: user.name })),
+        assignees,
+      }
+    }).filter((chore) => chore.assignees.length > 0)
+    return {
+      applicationName: data.settings.applicationName,
+      users: activeUsers.map((user) => ({
+        ...publicUser(user, data),
+        assignedChoreCount: outstandingChores.filter((chore) => chore.assignees.some((assignee) => assignee.id === user.id)).length,
       })),
+      chores: outstandingChores,
     }
   }
 

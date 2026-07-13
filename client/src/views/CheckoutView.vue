@@ -9,9 +9,45 @@
     </header>
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-6">{{ error }}</v-alert>
-    <section v-if="chores.length" class="kiosk-chores mb-9" aria-labelledby="kiosk-chores-heading">
+    <div class="content-section-header mb-4">
+      <div><p class="eyebrow mb-2">Profiles</p><h2 class="section-heading">Choose your name</h2></div>
+    </div>
+    <v-row v-if="users.length" class="checkout-grid mb-9">
+      <v-col v-for="user in users" :key="user.id" cols="12" sm="6" lg="4">
+        <v-card class="panel-card action-card checkout-card" :to="`/user/${user.id}`">
+          <v-card-text class="checkout-card-body">
+            <div class="checkout-card-person mb-7">
+              <v-avatar color="primary" variant="tonal" size="54" class="flex-shrink-0"><span class="text-h5 font-weight-bold">{{ user.name.slice(0, 1).toUpperCase() }}</span></v-avatar>
+              <div class="checkout-card-copy">
+                <h2 class="checkout-card-name">{{ user.name }}</h2>
+                <span class="muted checkout-card-status">{{ user.checkout ? user.checkout.item.name : user.assignedChoreCount ? 'Chores assigned' : user.checkoutEnabled ? 'Ready to check out' : 'All caught up' }}</span>
+              </div>
+            </div>
+            <template v-if="user.assignedChoreCount">
+              <p class="muted text-caption mb-1">ASSIGNED CHORES</p>
+              <div class="checkout-card-chore-count">{{ user.assignedChoreCount }} {{ user.assignedChoreCount === 1 ? 'chore' : 'chores' }}</div>
+            </template>
+            <template v-else-if="user.checkoutEnabled">
+              <p class="muted text-caption mb-1">TODAY’S TIME</p>
+              <div class="stat-number" :class="{ 'text-error': user.timeRemainingSeconds === 0 }">{{ formatDuration(user.timeRemainingSeconds) }}</div>
+            </template>
+            <template v-else>
+              <p class="muted text-caption mb-1">CHORES</p>
+              <div class="checkout-card-chore-count">All caught up</div>
+            </template>
+          </v-card-text>
+          <v-card-actions class="checkout-card-actions">
+            <v-chip :color="user.checkout ? 'accent' : user.assignedChoreCount ? 'secondary' : 'success'" variant="tonal" size="small">{{ user.checkout ? 'Item out' : user.assignedChoreCount ? 'Chores first' : user.checkoutEnabled ? 'Available' : 'All caught up' }}</v-chip>
+            <v-spacer />
+            <v-icon icon="mdi-chevron-right" aria-hidden="true" />
+          </v-card-actions>
+        </v-card>
+      </v-col>
+    </v-row>
+    <div v-else class="empty-state"><v-icon icon="mdi-account-plus-outline" size="44" class="mb-3" /><p>No active users yet. An admin can add them in Settings.</p></div>
+    <section v-if="chores.length" class="kiosk-chores" aria-labelledby="kiosk-chores-heading">
       <div class="content-section-header mb-4">
-        <div><p class="eyebrow mb-2">Assigned first</p><h2 id="kiosk-chores-heading" class="section-heading">Today’s chores</h2></div>
+        <div><p class="eyebrow mb-2">Responsibilities</p><h2 id="kiosk-chores-heading" class="section-heading">Today’s chores</h2></div>
         <v-chip color="secondary" variant="tonal" prepend-icon="mdi-eye-outline">View only</v-chip>
       </div>
       <v-row class="chore-board-grid">
@@ -35,38 +71,6 @@
         </v-col>
       </v-row>
     </section>
-    <div class="content-section-header mb-4">
-      <div><p class="eyebrow mb-2">Profiles</p><h2 class="section-heading">Choose your name</h2></div>
-    </div>
-    <v-row v-if="users.length" class="checkout-grid">
-      <v-col v-for="user in users" :key="user.id" cols="12" sm="6" lg="4">
-        <v-card class="panel-card action-card checkout-card" :to="`/user/${user.id}`">
-          <v-card-text class="checkout-card-body">
-            <div class="checkout-card-person mb-7">
-              <v-avatar color="primary" variant="tonal" size="54" class="flex-shrink-0"><span class="text-h5 font-weight-bold">{{ user.name.slice(0, 1).toUpperCase() }}</span></v-avatar>
-              <div class="checkout-card-copy">
-                <h2 class="checkout-card-name">{{ user.name }}</h2>
-                <span class="muted checkout-card-status">{{ user.checkout ? user.checkout.item.name : user.checkoutEnabled ? 'Ready to check out' : 'Chores only' }}</span>
-              </div>
-            </div>
-            <template v-if="user.checkoutEnabled">
-              <p class="muted text-caption mb-1">TODAY’S TIME</p>
-              <div class="stat-number" :class="{ 'text-error': user.timeRemainingSeconds === 0 }">{{ formatDuration(user.timeRemainingSeconds) }}</div>
-            </template>
-            <template v-else>
-              <p class="muted text-caption mb-1">ASSIGNED CHORES</p>
-              <div class="checkout-card-chore-count">{{ assignedChoreCount(user.id) }} {{ assignedChoreCount(user.id) === 1 ? 'chore' : 'chores' }}</div>
-            </template>
-          </v-card-text>
-          <v-card-actions class="checkout-card-actions">
-            <v-chip :color="user.checkout ? 'accent' : user.checkoutEnabled ? 'success' : 'secondary'" variant="tonal" size="small">{{ user.checkout ? 'Item out' : user.checkoutEnabled ? 'Available' : 'Chore profile' }}</v-chip>
-            <v-spacer />
-            <v-icon icon="mdi-chevron-right" aria-hidden="true" />
-          </v-card-actions>
-        </v-card>
-      </v-col>
-    </v-row>
-    <div v-else class="empty-state"><v-icon icon="mdi-account-plus-outline" size="44" class="mb-3" /><p>No active users yet. An admin can add them in Settings.</p></div>
   </section>
 </template>
 
@@ -79,7 +83,6 @@ const users = ref([])
 const chores = ref([])
 const error = ref('')
 const update = (state) => { users.value = state.users; chores.value = state.chores || [] }
-const assignedChoreCount = (userId) => chores.value.filter((chore) => chore.assignedToEveryone || chore.assignedUserIds.includes(userId)).length
 const recurrenceLabel = (recurrence) => ({ once: 'One-time chore', daily: 'Daily chore', weekly: 'Weekly chore' }[recurrence] || 'Chore')
 onMounted(async () => {
   try { update(await api('/state')) } catch (exception) { error.value = exception.message }

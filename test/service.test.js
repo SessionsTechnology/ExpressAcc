@@ -199,8 +199,36 @@ test('chore-only users have no checkout timer or available items and cannot chec
 
   const kiosk = await service.getPublicState()
   assert.equal(kiosk.users[0].checkoutEnabled, false)
+  assert.equal(kiosk.users[0].assignedChoreCount, 1)
   assert.equal(kiosk.chores[0].assignees[0].name, user.name)
   assert.deepEqual(kiosk.chores[0].assignedUserIds, [user.id])
+
+  const completion = await service.completeChore(user.id, kiosk.chores[0].id)
+  assert.equal((await service.getPublicState()).users[0].assignedChoreCount, 1)
+  await service.reviewCompletion(completion.id, 'approved')
+  const approvedKiosk = await service.getPublicState()
+  assert.equal(approvedKiosk.users[0].assignedChoreCount, 0)
+  assert.deepEqual(approvedKiosk.chores, [])
+})
+
+test('the kiosk only shows users who still need approval for a shared chore', async (t) => {
+  const { service, user } = await fixture(t)
+  await service.saveUsers([{ id: user.id, name: 'Alex' }, { name: 'Sam' }])
+  const users = (await service.getAdminState()).users
+  await service.saveChores([{ title: 'Clear the table', description: '', rewardMinutes: 5, recurrence: 'daily', assignedUserIds: [] }])
+  const chore = (await service.getAdminState()).chores[0]
+
+  const alexCompletion = await service.completeChore(users[0].id, chore.id)
+  await service.reviewCompletion(alexCompletion.id, 'approved')
+  const partiallyComplete = await service.getPublicState()
+  assert.equal(partiallyComplete.users[0].assignedChoreCount, 0)
+  assert.equal(partiallyComplete.users[1].assignedChoreCount, 1)
+  assert.equal(partiallyComplete.chores[0].assignedToEveryone, false)
+  assert.deepEqual(partiallyComplete.chores[0].assignees.map((assignee) => assignee.name), ['Sam'])
+
+  const samCompletion = await service.completeChore(users[1].id, chore.id)
+  await service.reviewCompletion(samCompletion.id, 'approved')
+  assert.deepEqual((await service.getPublicState()).chores, [])
 })
 
 test('checkout access cannot be removed while a user has an item out', async (t) => {
