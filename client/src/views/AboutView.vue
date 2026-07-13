@@ -22,9 +22,9 @@
 </template>
 
 <style scoped>
-.about-intro { max-width: 760px; font-family: "Avenir Next", "Segoe UI Variable Display", "Trebuchet MS", ui-rounded, sans-serif; font-size: clamp(1.2rem, 2.5vw, 1.55rem); font-weight: 650; line-height: 1.45; letter-spacing: -.025em; }
+.about-intro { max-width: 760px; font-family: "Avenir Next", Inter, "Segoe UI", sans-serif; font-size: clamp(1.2rem, 2.5vw, 1.55rem); font-weight: 700; line-height: 1.45; letter-spacing: -.025em; }
 .about-grid { display: grid; gap: 14px; }
-.about-point { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 15px; align-items: start; padding: 18px; background: rgba(233, 227, 212, .42); border: 1px solid rgba(32, 43, 42, .1); border-radius: 16px; }
+.about-point { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 15px; align-items: start; padding: 18px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 16px; }
 .about-point h2 { margin-bottom: 4px; font-size: 1.05rem; }
 .about-point p { margin: 0; color: var(--muted); line-height: 1.55; }
 </style>

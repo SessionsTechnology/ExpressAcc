@@ -50,10 +50,12 @@ test('HTTP setup and admin authentication protect private state', async (t) => {
       password: '',
       kioskMessage: 'Welcome to the kiosk',
       kioskTimeoutSeconds: 45,
+      darkMode: true,
     }),
   })
   assert.equal(updatedSettings.status, 200)
   assert.equal((await updatedSettings.json()).kioskTimeoutSeconds, 45)
+  assert.equal((await (await fetch(`${base}/status`)).json()).darkMode, true)
   const publicState = await fetch(`${base}/state`)
   assert.equal((await publicState.json()).kioskMessage, 'Welcome to the kiosk')
 

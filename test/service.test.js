@@ -59,17 +59,21 @@ test('kiosk settings default safely and are exposed to the appropriate screens',
   const before = await service.getAdminState()
   assert.equal(before.settings.kioskMessage, '')
   assert.equal(before.settings.kioskTimeoutSeconds, 30)
+  assert.equal(before.settings.darkMode, false)
 
   await service.updateSettings({
     ...before.settings,
     password: '',
     kioskMessage: 'Please finish your chores before screen time.',
     kioskTimeoutSeconds: 45,
+    darkMode: true,
   })
   const publicState = await service.getPublicState()
   assert.equal(publicState.kioskMessage, 'Please finish your chores before screen time.')
   assert.equal(service.status().kioskTimeoutSeconds, 45)
+  assert.equal(service.status().darkMode, true)
   assert.equal((await service.getAdminState()).settings.kioskTimeoutSeconds, 45)
+  assert.equal((await service.getAdminState()).settings.darkMode, true)
 })
 
 test('invalid backups are rejected before current data is replaced', async (t) => {

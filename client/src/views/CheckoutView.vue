@@ -2,8 +2,8 @@
   <section class="checkout-page">
     <header class="page-header mb-8">
       <div class="page-header-copy">
-        <p class="eyebrow mb-2">Household kiosk</p>
-        <h1 class="page-heading">Chores and checkout</h1>
+        <p class="eyebrow mb-3">Family space</p>
+        <h1 class="page-heading">Who’s here today?</h1>
       </div>
       <v-btn to="/" variant="text" prepend-icon="mdi-arrow-left">Home</v-btn>
     </header>
@@ -11,14 +11,15 @@
     <v-alert v-if="error" type="error" variant="tonal" class="mb-6">{{ error }}</v-alert>
     <v-alert v-if="kioskMessage" color="primary" variant="tonal" icon="mdi-bullhorn-outline" class="kiosk-message mb-7">{{ kioskMessage }}</v-alert>
     <div class="content-section-header mb-4">
-      <div><p class="eyebrow mb-2">Profiles</p><h2 class="section-heading">Choose your name</h2></div>
+      <div><h2 class="section-heading">Choose your profile</h2><p class="muted text-body-2 mt-1 mb-0">Your chores, time, and available items are waiting.</p></div>
+      <span class="roster-count">{{ users.length }} {{ users.length === 1 ? 'profile' : 'profiles' }}</span>
     </div>
     <v-row v-if="users.length" class="checkout-grid mb-9">
-      <v-col v-for="user in users" :key="user.id" cols="12" sm="6" lg="4">
-        <v-card class="panel-card action-card checkout-card" :to="`/user/${user.id}`">
+      <v-col v-for="(user, index) in users" :key="user.id" cols="12" sm="6" lg="4">
+        <v-card class="panel-card action-card checkout-card" :class="{ 'checkout-card--active': user.checkout }" :to="`/user/${user.id}`">
           <v-card-text class="checkout-card-body">
             <div class="checkout-card-person mb-7">
-              <v-avatar color="primary" variant="tonal" size="54" class="flex-shrink-0"><span class="text-h5 font-weight-bold">{{ user.name.slice(0, 1).toUpperCase() }}</span></v-avatar>
+              <v-avatar size="58" class="profile-avatar" :class="`profile-avatar--${index % 4}`"><span>{{ user.name.slice(0, 1).toUpperCase() }}</span></v-avatar>
               <div class="checkout-card-copy">
                 <h2 class="checkout-card-name">{{ user.name }}</h2>
                 <span class="muted checkout-card-status">{{ user.checkout ? user.checkout.item.name : user.assignedChoreCount ? 'Chores assigned' : user.checkoutEnabled ? 'Ready to check out' : 'All caught up' }}</span>
@@ -40,7 +41,7 @@
           <v-card-actions class="checkout-card-actions">
             <v-chip :color="user.checkout ? 'accent' : user.assignedChoreCount ? 'secondary' : 'success'" variant="tonal" size="small">{{ user.checkout ? 'Item out' : user.assignedChoreCount ? 'Chores first' : user.checkoutEnabled ? 'Available' : 'All caught up' }}</v-chip>
             <v-spacer />
-            <v-icon icon="mdi-chevron-right" aria-hidden="true" />
+            <span class="checkout-card-enter">Continue <v-icon icon="mdi-arrow-right" size="18" aria-hidden="true" /></span>
           </v-card-actions>
         </v-card>
       </v-col>
@@ -48,7 +49,7 @@
     <div v-else class="empty-state"><v-icon icon="mdi-account-plus-outline" size="44" class="mb-3" /><p>No active users yet. An admin can add them in Settings.</p></div>
     <section v-if="chores.length" class="kiosk-chores" aria-labelledby="kiosk-chores-heading">
       <div class="content-section-header mb-4">
-        <div><p class="eyebrow mb-2">Responsibilities</p><h2 id="kiosk-chores-heading" class="section-heading">Today’s chores</h2></div>
+        <div><p class="eyebrow mb-2">Shared list</p><h2 id="kiosk-chores-heading" class="section-heading">Today’s chores</h2></div>
         <v-chip color="secondary" variant="tonal" prepend-icon="mdi-eye-outline">View only</v-chip>
       </div>
       <v-row class="chore-board-grid">
@@ -96,7 +97,8 @@ onBeforeUnmount(() => socket.off('checkout:update', update))
 <style scoped>
 .content-section-header,
 .kiosk-chore-heading,
-.kiosk-assignee-chips {
+.kiosk-assignee-chips,
+.checkout-card-enter {
   display: flex;
   align-items: center;
 }
@@ -104,6 +106,15 @@ onBeforeUnmount(() => socket.off('checkout:update', update))
 .content-section-header {
   justify-content: space-between;
   gap: 16px;
+}
+
+.roster-count {
+  padding: 7px 11px;
+  color: rgb(var(--v-theme-primary));
+  background: var(--blue-soft);
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 750;
 }
 
 .kiosk-message :deep(.v-alert__content) {
@@ -117,7 +128,7 @@ onBeforeUnmount(() => socket.off('checkout:update', update))
 .kiosk-chore-card {
   flex: 1 1 auto;
   width: 100%;
-  background: rgba(var(--v-theme-secondary), .035);
+  background: var(--surface) !important;
 }
 
 .kiosk-chore-body {
@@ -167,6 +178,7 @@ onBeforeUnmount(() => socket.off('checkout:update', update))
 }
 
 .checkout-card {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -176,26 +188,44 @@ onBeforeUnmount(() => socket.off('checkout:update', update))
   overflow: hidden;
 }
 
+.checkout-card--active {
+  border-color: rgba(var(--v-theme-accent), .45) !important;
+  box-shadow: 0 12px 36px rgba(242, 124, 104, .12) !important;
+}
+
 .checkout-card-body {
+  position: relative;
   flex: 1 1 auto;
-  padding: 24px;
+  padding: 24px 24px 12px;
 }
 
 .checkout-card-person {
   display: flex;
   align-items: center;
+  gap: 15px;
   min-width: 0;
 }
+
+.profile-avatar {
+  flex: 0 0 auto;
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.profile-avatar--0 { background: #6579e8; }
+.profile-avatar--1 { background: #8c74d9; }
+.profile-avatar--2 { background: #ed8975; }
+.profile-avatar--3 { background: #55b894; }
 
 .checkout-card-copy {
   min-width: 0;
-  margin-left: 16px;
 }
 
 .checkout-card-name {
-  font-size: 1.35rem;
-  font-weight: 750;
-  line-height: 1.2;
+  font-size: clamp(1.45rem, 3vw, 1.85rem);
+  font-weight: 760;
+  line-height: 1.1;
   overflow-wrap: anywhere;
 }
 
@@ -209,14 +239,22 @@ onBeforeUnmount(() => socket.off('checkout:update', update))
 .checkout-card-chore-count {
   color: rgb(var(--v-theme-secondary));
   font-size: 1.5rem;
-  font-weight: 750;
+  font-weight: 760;
   line-height: 1.2;
 }
 
 .checkout-card-actions {
   min-height: 0;
   margin-top: auto;
-  padding: 0 24px 24px;
+  padding: 18px 24px 22px;
+  border-top: 1px solid var(--line);
+}
+
+.checkout-card-enter {
+  gap: 6px;
+  color: rgb(var(--v-theme-primary));
+  font-size: .82rem;
+  font-weight: 800;
 }
 
 @media (max-width: 599px) {

@@ -16,6 +16,7 @@ export function emptyDatabase() {
       passwordHash: '',
       sessionSecret: randomBytes(32).toString('base64url'),
       timeZone: process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      darkMode: false,
       kioskMessage: '',
       kioskTimeoutSeconds: 30,
       dailyTimeMinutes: Object.fromEntries(weekdays.map((day) => [day, 0])),
@@ -51,6 +52,7 @@ async function migrate(data) {
       settings: {
         ...defaults.settings,
         ...data.settings,
+        darkMode: data.settings?.darkMode === true,
         dailyTimeMinutes: { ...defaults.settings.dailyTimeMinutes, ...data.settings?.dailyTimeMinutes },
         sessionSecret: data.settings?.sessionSecret || defaults.settings.sessionSecret,
       },

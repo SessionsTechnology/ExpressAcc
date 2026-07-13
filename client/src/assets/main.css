@@ -1,42 +1,96 @@
 :root {
   color-scheme: light;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --paper: #f3eedf;
-  --paper-light: #fffdf6;
-  --paper-deep: #e9e3d4;
-  --ink: #202b2a;
-  --muted: #5c6865;
-  --forest: #1e5b4f;
-  --slate: #365f7d;
-  --terracotta: #a94c32;
-  --sun: #e9b949;
-  --line: rgba(32, 43, 42, .16);
-  --soft-line: rgba(32, 43, 42, .1);
-  --paper-shadow: 0 5px 0 rgba(32, 43, 42, .07), 0 20px 50px rgba(70, 63, 48, .1);
+  font-family: Inter, "Avenir Next", "Segoe UI", sans-serif;
+  --canvas: #f4f7fb;
+  --surface: #ffffff;
+  --surface-soft: #f8faff;
+  --ink: #182238;
+  --muted: #6c788e;
+  --blue: #5269e8;
+  --blue-soft: #e9edff;
+  --eyebrow: #4054c7;
+  --violet: #7861d8;
+  --violet-soft: #f0ecff;
+  --coral: #f27c68;
+  --coral-soft: #fff0ec;
+  --mint: #3eb58b;
+  --mint-soft: #e7f8f1;
+  --sun: #eeae48;
+  --sun-soft: #fff6df;
+  --line: #e2e7f0;
+  --line-strong: #d3dae7;
+  --app-bar-bg: rgba(255, 255, 255, .92);
+  --panel-bg: rgba(255, 255, 255, .96);
+  --metric-slate-soft: #e7f7fc;
+  --preview-track: #edf0f6;
+  --family-card-bg: linear-gradient(145deg, #f0f3ff, #fff 64%);
+  --parent-card-bg: linear-gradient(145deg, #f5f1ff, #fff 68%);
+  --family-card-line: #dce3ff;
+  --parent-card-line: #e5defa;
+  --avatar-border: #fff;
+  --soft-shadow: 0 12px 40px rgba(37, 52, 85, .08);
+  --lifted-shadow: 0 18px 54px rgba(37, 52, 85, .13);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #111722;
+  --surface: #192231;
+  --surface-soft: #202b3c;
+  --ink: #f4f6fb;
+  --muted: #aab4c5;
+  --blue: #91a2ff;
+  --blue-soft: #252f55;
+  --eyebrow: #aab7ff;
+  --violet: #b19af4;
+  --violet-soft: #30284e;
+  --coral: #ff9a86;
+  --coral-soft: #442a2b;
+  --mint: #69d1aa;
+  --mint-soft: #1d3b35;
+  --sun: #f4bf69;
+  --sun-soft: #3c3324;
+  --line: #2d394b;
+  --line-strong: #3b485c;
+  --app-bar-bg: rgba(20, 27, 39, .92);
+  --panel-bg: rgba(25, 34, 49, .97);
+  --metric-slate-soft: #203746;
+  --preview-track: #2b3545;
+  --family-card-bg: linear-gradient(145deg, #202a48, #192231 68%);
+  --parent-card-bg: linear-gradient(145deg, #2d2747, #192231 70%);
+  --family-card-line: #35446c;
+  --parent-card-line: #443a64;
+  --avatar-border: #192231;
+  --soft-shadow: 0 14px 42px rgba(0, 0, 0, .22);
+  --lifted-shadow: 0 20px 58px rgba(0, 0, 0, .32);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 html {
-  background: var(--paper);
+  background: var(--canvas);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: var(--paper);
+  background: var(--canvas);
   color: var(--ink);
 }
 
+::selection {
+  color: #fff;
+  background: var(--blue);
+}
+
 .v-application {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  position: relative;
   color: var(--ink);
-  background-color: var(--paper) !important;
-  background-image:
-    radial-gradient(circle at 8% 8%, rgba(233, 185, 73, .22), transparent 24rem),
-    radial-gradient(circle at 94% 84%, rgba(54, 95, 125, .13), transparent 28rem),
-    linear-gradient(rgba(32, 43, 42, .026) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(32, 43, 42, .026) 1px, transparent 1px) !important;
-  background-size: auto, auto, 32px 32px, 32px 32px !important;
+  background: var(--canvas) !important;
+  font-family: Inter, "Avenir Next", "Segoe UI", sans-serif !important;
 }
 
 h1,
@@ -44,8 +98,8 @@ h2,
 h3,
 .brand,
 .stat-number {
-  font-family: "Avenir Next", "Segoe UI Variable Display", "Trebuchet MS", ui-rounded, sans-serif !important;
   color: var(--ink);
+  font-family: "Avenir Next", Inter, "Segoe UI", sans-serif !important;
   letter-spacing: -.035em;
 }
 
@@ -54,24 +108,24 @@ p {
 }
 
 .app-bar {
-  background: rgba(255, 253, 246, .92) !important;
+  background: var(--app-bar-bg) !important;
   border-bottom: 1px solid var(--line) !important;
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(18px);
 }
 
 .app-bar-content {
   display: flex;
   align-items: center;
-  width: min(1240px, 100%);
+  width: min(1360px, 100%);
   height: 100%;
   margin-inline: auto;
-  padding-inline: 24px;
+  padding-inline: 32px;
 }
 
 .brand {
-  height: 62px !important;
-  max-width: calc(100vw - 132px);
-  padding-inline: 4px 12px !important;
+  height: 64px !important;
+  max-width: calc(100vw - 142px);
+  padding-inline: 0 12px !important;
   text-transform: none !important;
 }
 
@@ -86,16 +140,28 @@ p {
 
 .brand-mark {
   display: grid;
+  position: relative;
   flex: 0 0 auto;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  margin-right: 11px;
+  width: 44px;
+  height: 44px;
+  margin-right: 12px;
   color: #fff;
-  background: var(--forest);
-  border: 1px solid var(--ink);
-  border-radius: 13px;
-  box-shadow: 3px 3px 0 var(--sun);
+  background: linear-gradient(145deg, #667cf0, #4f63dd);
+  border-radius: 14px;
+  box-shadow: 0 8px 18px rgba(82, 105, 232, .24);
+}
+
+.brand-mark::after {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 12px;
+  height: 12px;
+  background: var(--mint);
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  content: "";
 }
 
 .brand-copy {
@@ -117,17 +183,21 @@ p {
 .brand-copy small {
   margin-top: 5px;
   color: var(--muted);
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: .59rem;
-  font-weight: 800;
-  letter-spacing: .16em;
+  font-family: Inter, "Segoe UI", sans-serif;
+  font-size: .61rem;
+  font-weight: 750;
+  letter-spacing: .09em;
   text-transform: uppercase;
+}
+
+.connection-chip {
+  letter-spacing: .02em !important;
 }
 
 .app-container {
   position: relative;
   z-index: 1;
-  width: min(1180px, 100%);
+  width: min(1240px, 100%);
 }
 
 .loading-screen {
@@ -144,63 +214,70 @@ p {
 .ambient {
   position: fixed;
   z-index: 0;
-  border-radius: 999px;
+  border-radius: 50%;
+  filter: blur(1px);
   pointer-events: none;
 }
 
 .ambient-one {
-  width: 260px;
-  height: 260px;
-  top: 116px;
+  top: 90px;
   left: -170px;
-  background: rgba(233, 185, 73, .3);
-  border: 1px dashed rgba(32, 43, 42, .22);
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, rgba(117, 143, 248, .16), rgba(117, 143, 248, 0) 70%);
 }
 
 .ambient-two {
-  right: -150px;
-  bottom: -130px;
-  width: 360px;
-  height: 360px;
-  background: rgba(169, 76, 50, .08);
-  border: 1px dashed rgba(169, 76, 50, .3);
+  right: -160px;
+  bottom: -120px;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(108, 210, 170, .14), rgba(108, 210, 170, 0) 70%);
 }
 
 .eyebrow {
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  padding: 7px 11px 6px;
-  color: #4c3800;
-  background: #f4cf6d;
-  border: 1px solid rgba(76, 56, 0, .3);
+  padding: 7px 11px;
+  color: var(--eyebrow);
+  background: var(--blue-soft);
   border-radius: 999px;
-  font-size: .68rem;
-  font-weight: 850;
-  letter-spacing: .13em;
+  font-size: .69rem;
+  font-weight: 800;
+  letter-spacing: .085em;
   line-height: 1;
   text-transform: uppercase;
 }
 
+.eyebrow::before {
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  background: currentColor;
+  border-radius: 50%;
+  content: "";
+}
+
 .page-heading,
 .page-title {
-  max-width: 800px;
-  font-size: clamp(2.25rem, 6vw, 4.75rem) !important;
+  max-width: 880px;
+  font-size: clamp(2.65rem, 6.5vw, 5.8rem) !important;
   font-weight: 750 !important;
-  line-height: .99;
+  line-height: .98;
   text-wrap: balance;
 }
 
 .page-lede,
 .page-subtitle {
-  max-width: 650px;
+  max-width: 680px;
   color: var(--muted);
-  font-size: clamp(1rem, 2vw, 1.12rem);
-  line-height: 1.7;
+  font-size: clamp(1rem, 2vw, 1.16rem);
+  line-height: 1.65;
 }
 
 .compact-heading {
-  font-size: clamp(2.15rem, 5vw, 3.5rem) !important;
+  font-size: clamp(2.25rem, 5vw, 4rem) !important;
 }
 
 .page-header,
@@ -209,7 +286,12 @@ p {
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 18px;
+  gap: 22px;
+}
+
+.page-header {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
 }
 
 .page-header-copy {
@@ -217,7 +299,7 @@ p {
 }
 
 .page-header .page-heading {
-  font-size: clamp(2.15rem, 5vw, 3.65rem) !important;
+  font-size: clamp(2.5rem, 5.5vw, 4.8rem) !important;
 }
 
 .page-header-actions {
@@ -236,10 +318,10 @@ p {
 .glass-card {
   overflow: hidden;
   color: var(--ink) !important;
-  background: rgba(255, 253, 246, .96) !important;
+  background: var(--panel-bg) !important;
   border: 1px solid var(--line) !important;
   border-radius: 22px !important;
-  box-shadow: var(--paper-shadow) !important;
+  box-shadow: var(--soft-shadow) !important;
 }
 
 .action-card {
@@ -251,45 +333,44 @@ p {
 .action-card:hover,
 .action-card:focus-visible {
   z-index: 1;
-  border-color: rgba(30, 91, 79, .62) !important;
-  box-shadow: 0 8px 0 rgba(30, 91, 79, .13), 0 24px 54px rgba(70, 63, 48, .13) !important;
-  transform: translateY(-3px);
+  border-color: rgba(82, 105, 232, .4) !important;
+  box-shadow: var(--lifted-shadow) !important;
+  transform: translateY(-4px);
 }
 
 .action-card:focus-visible {
-  outline: 3px solid rgba(30, 91, 79, .35);
+  outline: 3px solid rgba(82, 105, 232, .25);
   outline-offset: 4px;
 }
 
 .metric-card {
   position: relative;
-  min-height: 132px;
-  padding: 18px !important;
+  min-height: 148px;
+  padding: 20px !important;
   overflow: hidden;
 }
 
 .metric-card::after {
   position: absolute;
   right: -30px;
-  bottom: -40px;
-  width: 100px;
-  height: 100px;
-  background: rgba(30, 91, 79, .07);
-  border: 1px solid rgba(30, 91, 79, .12);
-  border-radius: 999px;
+  bottom: -38px;
+  width: 120px;
+  height: 120px;
+  background: var(--blue-soft);
+  border-radius: 50%;
   content: "";
 }
 
-.metric-card--slate::after { background: rgba(54, 95, 125, .08); border-color: rgba(54, 95, 125, .16); }
-.metric-card--sun::after { background: rgba(233, 185, 73, .17); border-color: rgba(138, 90, 0, .14); }
-.metric-card--terracotta::after { background: rgba(169, 76, 50, .08); border-color: rgba(169, 76, 50, .15); }
+.metric-card--slate::after { background: var(--metric-slate-soft); }
+.metric-card--sun::after { background: var(--sun-soft); }
+.metric-card--terracotta::after { background: var(--mint-soft); }
 
 .stat-number {
   position: relative;
   z-index: 1;
-  font-size: clamp(1.8rem, 5vw, 2.8rem);
-  font-weight: 800;
-  line-height: 1.08;
+  font-size: clamp(1.8rem, 5vw, 2.75rem);
+  font-weight: 780;
+  line-height: 1.05;
 }
 
 .muted {
@@ -297,17 +378,17 @@ p {
 }
 
 .section-heading {
-  font-size: 1.35rem;
-  font-weight: 750;
-  line-height: 1.25;
+  font-size: 1.4rem;
+  font-weight: 760;
+  line-height: 1.2;
 }
 
 .empty-state {
   padding: 42px 22px;
   color: var(--muted);
   text-align: center;
-  background: rgba(233, 227, 212, .38);
-  border: 1px dashed rgba(32, 43, 42, .28);
+  background: var(--surface-soft);
+  border: 1px dashed var(--line-strong);
   border-radius: 18px;
 }
 
@@ -326,6 +407,10 @@ p {
   text-transform: none !important;
 }
 
+.v-btn--variant-elevated {
+  box-shadow: 0 7px 18px rgba(82, 105, 232, .2) !important;
+}
+
 .v-btn.v-btn--icon.v-btn--size-small {
   width: 44px;
   height: 44px;
@@ -333,18 +418,22 @@ p {
 
 .v-chip {
   font-weight: 750;
-  letter-spacing: .01em;
+  letter-spacing: .005em;
+}
+
+.v-avatar {
+  border: 1px solid rgba(82, 105, 232, .08);
 }
 
 .v-card-title {
-  font-family: "Avenir Next", "Segoe UI Variable Display", "Trebuchet MS", ui-rounded, sans-serif;
-  font-weight: 750;
+  font-family: "Avenir Next", Inter, "Segoe UI", sans-serif;
+  font-weight: 760;
   letter-spacing: -.025em;
 }
 
 .v-card--variant-outlined {
-  background: rgba(255, 253, 246, .58) !important;
-  border-color: rgba(32, 43, 42, .18) !important;
+  background: var(--surface-soft) !important;
+  border-color: var(--line) !important;
 }
 
 .v-field {
@@ -352,11 +441,11 @@ p {
 }
 
 .v-field--variant-outlined .v-field__outline {
-  --v-field-border-opacity: .24;
+  --v-field-border-opacity: .2;
 }
 
 .v-field--focused .v-field__outline {
-  --v-field-border-opacity: .8;
+  --v-field-border-opacity: .7;
 }
 
 .v-list-item {
@@ -364,8 +453,8 @@ p {
 }
 
 .v-list-item:hover {
-  background: rgba(233, 227, 212, .46);
-  border-color: var(--soft-line);
+  background: var(--surface-soft);
+  border-color: var(--line);
 }
 
 .v-tabs.settings-tabs {
@@ -375,14 +464,13 @@ p {
 }
 
 .settings-tabs .v-tab {
-  min-height: 42px;
-  border-radius: 11px !important;
+  min-height: 44px;
+  border-radius: 12px !important;
 }
 
 .settings-tabs .v-tab.v-tab--selected {
-  color: var(--forest) !important;
-  background: var(--paper-light);
-  box-shadow: 0 2px 0 rgba(32, 43, 42, .08);
+  color: rgb(var(--v-theme-primary)) !important;
+  background: var(--blue-soft);
 }
 
 .settings-tabs .v-tab__slider {
@@ -390,24 +478,23 @@ p {
 }
 
 :where(a, button, [tabindex], input, select, textarea):focus-visible {
-  outline: 3px solid rgba(30, 91, 79, .34);
+  outline: 3px solid rgba(82, 105, 232, .28);
   outline-offset: 3px;
 }
 
 @media (max-width: 600px) {
   .app-bar-content {
-    padding-inline: 12px;
+    padding-inline: 14px;
   }
 
   .brand {
-    max-width: calc(100vw - 112px);
-    padding-left: 2px !important;
+    max-width: calc(100vw - 116px);
   }
 
   .brand-mark {
-    width: 38px;
-    height: 38px;
-    margin-right: 9px;
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
   }
 
   .brand-copy small {
@@ -421,7 +508,7 @@ p {
   .page-heading,
   .page-title,
   .page-header .page-heading {
-    font-size: clamp(2rem, 11vw, 3rem) !important;
+    font-size: clamp(2.35rem, 12vw, 3.7rem) !important;
   }
 
   .page-header {

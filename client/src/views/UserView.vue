@@ -12,7 +12,7 @@
           <p class="page-lede">Enter the PIN your admin gave you to continue.</p>
         </div>
         <div v-else-if="state.user" class="page-header-copy">
-          <p class="eyebrow mb-2">Welcome</p>
+          <p class="eyebrow mb-2">Welcome back</p>
           <h1 class="page-heading mb-3">{{ state.user.name }}</h1>
           <p v-if="state.user.checkoutEnabled" class="page-lede">You have <strong class="text-primary">{{ formatDuration(state.user.timeRemainingSeconds) }}</strong> remaining today.</p>
           <p v-else class="page-lede">Your assigned chores are ready below.</p>
@@ -227,7 +227,8 @@ onBeforeUnmount(() => {
 .pin-grid .v-btn {
   width: 100% !important;
   min-width: 0 !important;
-  height: 58px !important;
+  height: 64px !important;
+  font-size: 1.1rem;
 }
 
 .pin-grid .v-btn--icon {

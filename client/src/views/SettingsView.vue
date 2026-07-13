@@ -1,7 +1,7 @@
 <template>
   <section v-if="ready" class="settings-page">
     <div class="page-header settings-page-header mb-7">
-      <div class="page-header-copy"><p class="eyebrow mb-2">Configuration</p><h1 class="page-heading">Settings</h1></div>
+      <div class="page-header-copy"><p class="eyebrow mb-3">Parent dashboard</p><h1 class="page-heading">Settings</h1><p class="page-lede mt-4 mb-0">Make the family space work the way your household does.</p></div>
       <div class="settings-header-actions"><v-btn to="/admin" variant="text" prepend-icon="mdi-arrow-left">Dashboard</v-btn></div>
     </div>
     <v-alert v-if="notice" type="success" variant="tonal" closable class="mb-5" @click:close="notice = ''">{{ notice }}</v-alert>
@@ -12,7 +12,9 @@
 
     <v-window v-model="tab">
       <v-window-item value="general">
-        <v-card class="glass-card panel-card settings-panel pa-3 pa-sm-6"><v-card-text><h2 class="section-heading mb-5">Application</h2><v-text-field v-model="settings.applicationName" label="Application name" /><v-select v-model="settings.timeZone" :items="timeZones" label="Time zone" /><v-text-field v-model="settings.password" label="New admin password" type="password" hint="Leave blank to keep the current password" persistent-hint class="mb-6" />
+        <v-card class="glass-card panel-card settings-panel pa-3 pa-sm-6"><v-card-text><h2 class="section-heading mb-5">Application</h2><v-text-field v-model="settings.applicationName" label="Application name" />
+          <div class="appearance-setting mb-6"><v-avatar color="primary" variant="tonal" size="48"><v-icon :icon="settings.darkMode ? 'mdi-weather-night' : 'mdi-white-balance-sunny'" /></v-avatar><div class="appearance-setting-copy"><h3>Dark mode</h3><p class="muted">Use the darker color theme on every connected screen.</p></div><v-switch v-model="settings.darkMode" color="primary" inset hide-details aria-label="Dark mode" /></div>
+          <v-select v-model="settings.timeZone" :items="timeZones" label="Time zone" /><v-text-field v-model="settings.password" label="New admin password" type="password" hint="Leave blank to keep the current password" persistent-hint class="mb-6" />
           <h2 class="section-heading mb-2">Kiosk</h2><p class="muted mb-5">Show a household-wide message and return inactive user profiles to the kiosk automatically.</p><v-textarea v-model="settings.kioskMessage" label="Kiosk message" hint="Leave blank to hide the message" persistent-hint maxlength="500" counter auto-grow rows="2" class="mb-4" /><v-text-field v-model.number="settings.kioskTimeoutSeconds" label="User profile inactivity timeout" type="number" min="5" max="3600" suffix="seconds" hint="Between 5 seconds and 1 hour" persistent-hint class="mb-7" />
           <h2 class="section-heading mb-2">Daily timed-device allowance</h2><p class="muted mb-5">Minutes reset at the start of each day in the selected time zone.</p><v-row><v-col v-for="day in weekdays" :key="day" cols="12" sm="6" md="4"><v-text-field v-model.number="settings.dailyTimeMinutes[day]" :label="day" type="number" min="0" max="1440" suffix="minutes" /></v-col></v-row>
         </v-card-text><v-card-actions class="settings-card-actions"><v-btn color="primary" size="large" :loading="saving" @click="saveSettings">Save general settings</v-btn></v-card-actions></v-card>
@@ -68,7 +70,7 @@ import { api } from '../lib/api.js'
 const router = useRouter(); const ready = ref(false); const saving = ref(false); const tab = ref('general'); const error = ref(''); const notice = ref(''); const backupFile = ref(null)
 const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; const recurrences = [{title:'One time',value:'once'},{title:'Daily',value:'daily'},{title:'Weekly',value:'weekly'}]
 const guessedZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; const timeZones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [guessedZone, 'UTC']
-const settings = reactive({ applicationName:'', password:'', timeZone:guessedZone, kioskMessage:'', kioskTimeoutSeconds:30, dailyTimeMinutes:Object.fromEntries(weekdays.map(day => [day,0])) }); const users = ref([]); const items = ref([]); const chores = ref([])
+const settings = reactive({ applicationName:'', password:'', timeZone:guessedZone, darkMode:false, kioskMessage:'', kioskTimeoutSeconds:30, dailyTimeMinutes:Object.fromEntries(weekdays.map(day => [day,0])) }); const users = ref([]); const items = ref([]); const chores = ref([])
 const assignableUsers = computed(() => users.value.filter((user) => user.id && !user.disabled))
 async function load() { try { const state = await api('/admin/state'); Object.assign(settings, state.settings, { password: '' }); users.value = state.users.map(user => ({ ...user, pin:'', clearPin:false })); items.value = state.items; chores.value = state.chores } catch (exception) { if (exception.status === 401) return router.replace('/admin/login'); error.value = exception.message } finally { ready.value = true } }
 function addUser() { users.value.push({ name:'', pin:'', disabled:false, checkoutEnabled:true, hasPin:false, clearPin:false }) }
@@ -108,14 +110,41 @@ onMounted(load)
   margin-bottom: 0;
 }
 
+.appearance-setting {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.appearance-setting-copy {
+  min-width: 0;
+}
+
+.appearance-setting-copy h3 {
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -.01em;
+}
+
+.appearance-setting-copy p {
+  margin: 3px 0 0;
+  font-size: .84rem;
+  line-height: 1.45;
+}
+
 .settings-tabs-rail {
   min-width: 0;
   padding: 6px;
   overflow: hidden;
   border: 1px solid rgba(var(--v-theme-on-surface), .1);
-  border-radius: 18px;
-  background: rgba(var(--v-theme-surface), .72);
-  box-shadow: 0 12px 34px rgba(var(--v-theme-on-background), .1);
+  border-radius: 16px;
+  background: rgba(var(--v-theme-surface), .92);
+  box-shadow: var(--soft-shadow);
 }
 
 .settings-tabs {
@@ -135,7 +164,8 @@ onMounted(load)
 }
 
 .settings-tabs :deep(.v-tab.v-tab--selected) {
-  background: rgba(var(--v-theme-primary), .12);
+  color: rgb(var(--v-theme-primary));
+  background: var(--blue-soft);
 }
 
 .settings-tabs :deep(.v-tab__slider) {
@@ -304,11 +334,11 @@ onMounted(load)
   }
 
   .settings-panel {
-    border-radius: 22px !important;
+    border-radius: 18px !important;
   }
 
   .settings-tabs-rail {
-    border-radius: 16px;
+    border-radius: 14px;
   }
 
   .settings-entry {

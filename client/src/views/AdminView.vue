@@ -2,8 +2,9 @@
   <section v-if="ready" class="admin-page">
     <div class="page-header admin-page-header mb-8">
       <div class="page-header-copy">
-        <p class="eyebrow mb-2">Parent dashboard</p>
-        <h1 class="page-heading">Today at a glance</h1>
+        <p class="eyebrow mb-3">Parent dashboard</p>
+        <h1 class="page-heading">Household overview</h1>
+        <p class="page-lede mt-4 mb-0">A quick look at everyone’s time, checkouts, and completed chores.</p>
       </div>
       <div class="admin-header-actions">
         <v-btn to="/settings" color="secondary" variant="tonal" prepend-icon="mdi-cog-outline">Settings</v-btn>
@@ -49,7 +50,7 @@
     </v-row>
 
     <div class="content-section-header mb-4">
-      <div><h2 class="section-heading">Users and time</h2><p class="muted text-body-2 mb-0">See each person’s remaining allowance and current checkout.</p></div>
+      <div><h2 class="section-heading">Today’s roster</h2><p class="muted text-body-2 mb-0">Remaining allowance and live checkout status by person.</p></div>
       <v-btn to="/checkout" variant="text" append-icon="mdi-arrow-right">Open kiosk</v-btn>
     </div>
     <v-row class="mb-9">
@@ -176,18 +177,6 @@ onBeforeUnmount(() => { socket.off('state:changed', onChanged); socket.off('chec
   overflow: hidden;
 }
 
-.metric-card::before {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 3px;
-  background: rgb(var(--metric-tone));
-  content: '';
-}
-
-.metric-card--checked-out { --metric-tone: var(--v-theme-secondary); }
-.metric-card--pending { --metric-tone: var(--v-theme-warning); }
-.metric-card--available { --metric-tone: var(--v-theme-success); }
-
 .metric-card__content {
   position: relative;
   z-index: 1;
@@ -204,11 +193,10 @@ onBeforeUnmount(() => { socket.off('state:changed', onChanged); socket.off('chec
 
 .metric-card__label {
   color: rgba(var(--v-theme-on-surface), .66);
-  font-size: .7rem;
-  font-weight: 800;
-  letter-spacing: .08em;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .01em;
   line-height: 1.25;
-  text-transform: uppercase;
 }
 
 .content-section-header {
@@ -247,7 +235,7 @@ onBeforeUnmount(() => { socket.off('state:changed', onChanged); socket.off('chec
 
 .approval-item {
   border: 1px solid rgba(var(--v-theme-on-surface), .08);
-  border-radius: 16px;
+  border-radius: 14px;
 }
 
 .approval-item :deep(.v-list-item-subtitle) {

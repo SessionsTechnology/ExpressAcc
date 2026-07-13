@@ -109,6 +109,7 @@ function sanitizedSettings(settings) {
     isSetup: settings.isSetup,
     applicationName: settings.applicationName,
     timeZone: settings.timeZone,
+    darkMode: settings.darkMode,
     kioskMessage: settings.kioskMessage,
     kioskTimeoutSeconds: settings.kioskTimeoutSeconds,
     dailyTimeMinutes: settings.dailyTimeMinutes,
@@ -175,6 +176,7 @@ export function createService(database) {
         isSetup: settings.isSetup,
         applicationName: settings.applicationName,
         timeZone: settings.timeZone,
+        darkMode: settings.darkMode,
         kioskTimeoutSeconds: settings.kioskTimeoutSeconds,
       }
     },
@@ -220,6 +222,7 @@ export function createService(database) {
       return database.transaction((data) => {
         data.settings.applicationName = input.applicationName
         data.settings.timeZone = input.timeZone
+        if (input.darkMode !== undefined) data.settings.darkMode = Boolean(input.darkMode)
         if (input.kioskMessage !== undefined) data.settings.kioskMessage = input.kioskMessage.trim()
         if (input.kioskTimeoutSeconds !== undefined) data.settings.kioskTimeoutSeconds = Number(input.kioskTimeoutSeconds)
         data.settings.dailyTimeMinutes = Object.fromEntries(weekdays.map((day) => [day, Number(input.dailyTimeMinutes[day] || 0)]))

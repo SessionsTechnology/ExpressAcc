@@ -15,6 +15,7 @@ const settingsSchema = z.object({
   applicationName: z.string().trim().min(1).max(80),
   password: z.string().max(200).optional(),
   timeZone,
+  darkMode: z.boolean().optional(),
   kioskMessage: z.string().max(500).optional(),
   kioskTimeoutSeconds: z.coerce.number().int().min(5).max(3600).optional(),
   dailyTimeMinutes: dailyTime,
