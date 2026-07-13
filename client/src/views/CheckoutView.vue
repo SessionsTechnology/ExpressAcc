@@ -3,9 +3,12 @@
     <header class="page-header mb-8">
       <div class="page-header-copy">
         <p class="eyebrow mb-3">Family space</p>
-        <h1 class="page-heading">Who’s here today?</h1>
+        <h1 class="page-heading">{{ timeGreeting }}</h1>
       </div>
-      <v-btn to="/" variant="text" prepend-icon="mdi-arrow-left">Home</v-btn>
+      <div class="kiosk-header-actions">
+        <time class="kiosk-clock" :datetime="currentTime.toISOString()" :aria-label="`Current time: ${formattedCurrentTime}`">{{ formattedCurrentTime }}</time>
+        <v-btn to="/" variant="text" prepend-icon="mdi-arrow-left">Home</v-btn>
+      </div>
     </header>
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-6">{{ error }}</v-alert>
@@ -77,7 +80,7 @@
 </template>
 
 <script setup>
-import { inject, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api } from '../lib/api.js'
 import { formatDuration } from '../lib/format.js'
 const socket = inject('socket')
@@ -85,16 +88,49 @@ const users = ref([])
 const chores = ref([])
 const kioskMessage = ref('')
 const error = ref('')
+const currentTime = ref(new Date())
+const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
+const formattedCurrentTime = computed(() => timeFormatter.format(currentTime.value))
+const timeGreeting = computed(() => {
+  const hour = currentTime.value.getHours()
+  if (hour < 5 || hour >= 21) return 'Good night'
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
+})
+let clockInterval
 const update = (state) => { users.value = state.users; chores.value = state.chores || []; kioskMessage.value = state.kioskMessage || '' }
 const recurrenceLabel = (recurrence) => ({ once: 'One-time chore', daily: 'Daily chore', weekly: 'Weekly chore' }[recurrence] || 'Chore')
 onMounted(async () => {
+  clockInterval = window.setInterval(() => { currentTime.value = new Date() }, 1000)
   try { update(await api('/state')) } catch (exception) { error.value = exception.message }
   socket.on('checkout:update', update)
 })
-onBeforeUnmount(() => socket.off('checkout:update', update))
+onBeforeUnmount(() => {
+  window.clearInterval(clockInterval)
+  socket.off('checkout:update', update)
+})
 </script>
 
 <style scoped>
+.kiosk-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 18px;
+}
+
+.kiosk-clock {
+  color: var(--ink);
+  font-family: "Avenir Next", Inter, "Segoe UI", sans-serif;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  letter-spacing: -.035em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .content-section-header,
 .kiosk-chore-heading,
 .kiosk-assignee-chips,
@@ -258,6 +294,18 @@ onBeforeUnmount(() => socket.off('checkout:update', update))
 }
 
 @media (max-width: 599px) {
+  .kiosk-header-actions {
+    width: 100%;
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .kiosk-clock {
+    font-size: 1.6rem;
+  }
+
   .content-section-header {
     align-items: flex-start;
   }
