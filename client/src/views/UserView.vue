@@ -10,7 +10,8 @@
         <div v-else-if="state.user" class="page-header-copy">
           <p class="eyebrow mb-2">Welcome</p>
           <h1 class="page-heading mb-3">{{ state.user.name }}</h1>
-          <p class="page-lede">You have <strong class="text-primary">{{ formatDuration(state.user.timeRemainingSeconds) }}</strong> remaining today.</p>
+          <p v-if="state.user.checkoutEnabled" class="page-lede">You have <strong class="text-primary">{{ formatDuration(state.user.timeRemainingSeconds) }}</strong> remaining today.</p>
+          <p v-else class="page-lede">Your assigned chores are ready below.</p>
         </div>
         <v-btn to="/checkout" variant="text" prepend-icon="mdi-arrow-left">All users</v-btn>
       </header>
@@ -32,7 +33,22 @@
       <template v-else-if="state.user">
         <v-alert v-if="message" type="success" variant="tonal" closable class="mb-5" @click:close="message = ''">{{ message }}</v-alert>
         <v-alert v-if="error" type="error" variant="tonal" closable class="mb-5" @click:close="error = ''">{{ error }}</v-alert>
-        <v-card v-if="state.user.checkout" class="panel-card user-panel mb-7">
+        <v-card v-if="state.chores.length || !state.user.checkoutEnabled" class="panel-card user-panel" :class="{ 'mb-7': state.user.checkoutEnabled }">
+          <v-card-text class="user-panel-body">
+            <div class="content-section-header mb-5">
+              <div><p class="eyebrow mb-2">Responsibilities and rewards</p><h2 class="section-heading">Chores</h2></div>
+            </div>
+            <div class="chore-list">
+              <div v-for="chore in state.chores" :key="chore.id" class="chore-list-item">
+                <v-avatar color="secondary" variant="tonal"><v-icon icon="mdi-broom" /></v-avatar>
+                <div class="chore-copy"><h3>{{ chore.title }}</h3><p class="muted text-caption">{{ chore.description || `${chore.recurrence} chore` }}</p></div>
+                <v-chip v-if="chore.completionStatus" :color="chore.completionStatus === 'approved' ? 'success' : 'warning'" variant="tonal" class="chore-action">{{ chore.completionStatus === 'pending' ? 'Awaiting approval' : 'Approved' }}</v-chip><v-btn v-else color="secondary" variant="tonal" class="chore-action" @click="completeChore(chore)">{{ choreButtonLabel(chore) }}</v-btn>
+              </div>
+            </div>
+            <div v-if="!state.chores.length" class="empty-state">No chores are assigned right now.</div>
+          </v-card-text>
+        </v-card>
+        <v-card v-if="state.user.checkoutEnabled && state.user.checkout" class="panel-card user-panel mb-7">
           <v-card-text class="user-panel-body">
             <div class="content-section-header mb-5">
               <p class="eyebrow">Currently checked out</p>
@@ -54,7 +70,7 @@
             <v-btn color="accent" size="large" prepend-icon="mdi-tray-arrow-down" :loading="loading" @click="checkin">Check in item</v-btn>
           </v-card-actions>
         </v-card>
-        <v-card v-else class="panel-card user-panel mb-7">
+        <v-card v-else-if="state.user.checkoutEnabled" class="panel-card user-panel mb-7">
           <v-card-text class="user-panel-body">
             <div class="content-section-header mb-5">
               <div><p class="eyebrow mb-2">Available now</p><h2 class="section-heading">Choose an item</h2></div>
@@ -88,21 +104,6 @@
             <v-btn color="primary" size="large" :disabled="!selectedItem || state.checkoutBlocked" :loading="loading" @click="checkout">Check out selection</v-btn>
           </v-card-actions>
         </v-card>
-        <v-card class="panel-card user-panel">
-          <v-card-text class="user-panel-body">
-            <div class="content-section-header mb-5">
-              <div><p class="eyebrow mb-2">Responsibilities and rewards</p><h2 class="section-heading">Chores</h2></div>
-            </div>
-            <div class="chore-list">
-              <div v-for="chore in state.chores" :key="chore.id" class="chore-list-item">
-                <v-avatar color="secondary" variant="tonal"><v-icon icon="mdi-broom" /></v-avatar>
-                <div class="chore-copy"><h3>{{ chore.title }}</h3><p class="muted text-caption">{{ chore.description || `${chore.recurrence} chore` }}</p></div>
-                <v-chip v-if="chore.completionStatus" :color="chore.completionStatus === 'approved' ? 'success' : 'warning'" variant="tonal" class="chore-action">{{ chore.completionStatus === 'pending' ? 'Awaiting approval' : 'Approved' }}</v-chip><v-btn v-else color="secondary" variant="tonal" class="chore-action" @click="completeChore(chore)">{{ chore.requiredForCheckout ? 'Submit required chore' : `Submit · +${chore.rewardMinutes}m` }}</v-btn>
-              </div>
-            </div>
-            <div v-if="!state.chores.length" class="empty-state">No chores are assigned right now.</div>
-          </v-card-text>
-        </v-card>
       </template>
     </v-col>
   </v-row>
@@ -119,6 +120,10 @@ const token = ref(sessionStorage.getItem(`expressacc-user-${userId}`) || '')
 const pin = ref(''); const selectedItem = ref(''); const loading = ref(false); const error = ref(''); const message = ref('')
 const state = reactive({ user: null, availableItems: [], chores: [], checkoutBlocked: false })
 const requiredChoresRemaining = computed(() => state.chores.filter((chore) => chore.requiredForCheckout && chore.completionStatus !== 'approved').length)
+const choreButtonLabel = (chore) => {
+  if (chore.requiredForCheckout && state.user.checkoutEnabled) return 'Submit required chore'
+  return chore.rewardMinutes ? `Submit · +${chore.rewardMinutes}m` : 'Submit chore'
+}
 async function load() {
   if (!token.value) return
   try { Object.assign(state, await userApi(userId, token.value)) }

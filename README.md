@@ -11,7 +11,9 @@ Users can check shared items in and out, see their remaining timed-device allowa
 - PIN-protected user access and password-protected admin access
 - Real-time checkout and countdown updates across connected screens
 - Item availability enforcement (one item cannot be checked out twice)
+- Per-user item assignments and chore-only profiles without checkout timers
 - One-time, daily, and weekly chores with approval-based time rewards
+- Read-only kiosk chore board with visible assignees
 - Admin dashboard, activity history, and manual time adjustments
 - JSON backup and restore, including automatic pre-migration/import backups
 - Automatic migration from the original `adminSettings/users/items/userItemAssociations` database format

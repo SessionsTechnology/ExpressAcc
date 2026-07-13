@@ -56,11 +56,11 @@
       <v-col v-for="user in activeUsers" :key="user.id" cols="12" md="6" lg="4">
         <v-card class="glass-card panel-card user-time-card pa-2 h-100">
           <v-card-text>
-            <div class="user-card-identity mb-5"><v-avatar color="primary" variant="tonal">{{ user.name.slice(0,1).toUpperCase() }}</v-avatar><div class="user-card-identity__copy"><h3 class="text-h6">{{ user.name }}</h3><span class="muted text-caption">{{ user.checkout ? `${user.checkout.item.name} checked out` : 'No item checked out' }}</span></div></div>
-            <div class="stat-number" :class="{ 'text-error': user.timeRemainingSeconds === 0 }">{{ formatDuration(user.timeRemainingSeconds) }}</div>
-            <div class="muted text-caption">remaining today</div>
+            <div class="user-card-identity mb-5"><v-avatar color="primary" variant="tonal">{{ user.name.slice(0,1).toUpperCase() }}</v-avatar><div class="user-card-identity__copy"><h3 class="text-h6">{{ user.name }}</h3><span class="muted text-caption">{{ user.checkout ? `${user.checkout.item.name} checked out` : user.checkoutEnabled ? 'No item checked out' : 'Chore-only profile' }}</span></div></div>
+            <template v-if="user.checkoutEnabled"><div class="stat-number" :class="{ 'text-error': user.timeRemainingSeconds === 0 }">{{ formatDuration(user.timeRemainingSeconds) }}</div><div class="muted text-caption">remaining today</div></template>
+            <v-chip v-else color="secondary" variant="tonal" prepend-icon="mdi-broom">No checkout timer</v-chip>
           </v-card-text>
-          <v-card-actions class="user-time-actions"><v-btn size="small" variant="tonal" color="warning" @click="adjust(user, -900)">−15m</v-btn><v-btn size="small" variant="tonal" color="success" @click="adjust(user, 900)">+15m</v-btn><v-btn size="small" variant="tonal" prepend-icon="mdi-pencil-outline" @click="openTimeDialog(user)">Set</v-btn><v-btn size="small" variant="text" prepend-icon="mdi-restore" @click="resetTime(user)">Default</v-btn><v-spacer /><v-chip v-if="user.checkout" color="accent" size="small" variant="tonal">In use</v-chip></v-card-actions>
+          <v-card-actions v-if="user.checkoutEnabled" class="user-time-actions"><v-btn size="small" variant="tonal" color="warning" @click="adjust(user, -900)">−15m</v-btn><v-btn size="small" variant="tonal" color="success" @click="adjust(user, 900)">+15m</v-btn><v-btn size="small" variant="tonal" prepend-icon="mdi-pencil-outline" @click="openTimeDialog(user)">Set</v-btn><v-btn size="small" variant="text" prepend-icon="mdi-restore" @click="resetTime(user)">Default</v-btn><v-spacer /><v-chip v-if="user.checkout" color="accent" size="small" variant="tonal">In use</v-chip></v-card-actions>
         </v-card>
       </v-col>
       <v-col v-if="!activeUsers.length" cols="12"><div class="empty-state">Add a user in Settings to get started.</div></v-col>

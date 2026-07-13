@@ -42,6 +42,7 @@ function publicUser(user, data, now = new Date()) {
     name: user.name,
     hasPin: Boolean(user.pinHash),
     disabled: user.disabled,
+    checkoutEnabled: user.checkoutEnabled !== false,
     timeRemainingSeconds: seconds,
     checkout: checkout && item ? {
       id: checkout.id,
@@ -134,9 +135,22 @@ export function createService(database) {
   async function getPublicState() {
     await ensureDailyReset()
     const data = state()
+    const activeUsers = data.users.filter((user) => !user.disabled)
     return {
       applicationName: data.settings.applicationName,
-      users: data.users.filter((user) => !user.disabled).map((user) => publicUser(user, data)),
+      users: activeUsers.map((user) => publicUser(user, data)),
+      chores: data.chores.filter((chore) => !chore.disabled).map((chore) => ({
+        id: chore.id,
+        title: chore.title,
+        description: chore.description,
+        recurrence: chore.recurrence,
+        rewardMinutes: chore.rewardMinutes,
+        assignedToEveryone: chore.assignedUserIds.length === 0,
+        assignedUserIds: chore.assignedUserIds,
+        assignees: activeUsers
+          .filter((user) => chore.assignedUserIds.length === 0 || chore.assignedUserIds.includes(user.id))
+          .map((user) => ({ id: user.id, name: user.name })),
+      })),
     }
   }
 
@@ -203,6 +217,12 @@ export function createService(database) {
         for (const old of data.users.filter((user) => !ids.has(user.id))) {
           if (data.checkouts.some((checkout) => checkout.userId === old.id)) throw new AppError(409, `${old.name} must check in before being deleted.`)
         }
+        for (const input of prepared) {
+          const existing = data.users.find((user) => user.id === input.id)
+          if (existing && input.checkoutEnabled === false && data.checkouts.some((checkout) => checkout.userId === existing.id)) {
+            throw new AppError(409, `${existing.name} must check in before checkout access can be turned off.`)
+          }
+        }
         data.users = prepared.map((input) => {
           const existing = data.users.find((user) => user.id === input.id)
           return {
@@ -210,13 +230,14 @@ export function createService(database) {
             name: input.name.trim(),
             pinHash: input.clearPin ? '' : input.nextPinHash || existing?.pinHash || '',
             disabled: Boolean(input.disabled),
+            checkoutEnabled: input.checkoutEnabled ?? existing?.checkoutEnabled ?? true,
             timeRemainingSeconds: existing?.timeRemainingSeconds || 0,
             timeDate: existing?.timeDate || '',
             createdAt: existing?.createdAt || new Date().toISOString(),
           }
         })
         log(data, 'users', 'User list updated', { count: data.users.length })
-        return data.users.map((user) => ({ id: user.id, name: user.name, hasPin: Boolean(user.pinHash), disabled: user.disabled }))
+        return data.users.map((user) => ({ id: user.id, name: user.name, hasPin: Boolean(user.pinHash), disabled: user.disabled, checkoutEnabled: user.checkoutEnabled }))
       })
     },
 
@@ -234,6 +255,7 @@ export function createService(database) {
             description: input.description?.trim() || '',
             isTimed: Boolean(input.isTimed),
             disabled: Boolean(input.disabled),
+            assignedUserIds: input.assignedUserIds ?? existing?.assignedUserIds ?? [],
             createdAt: existing?.createdAt || new Date().toISOString(),
           }
         })
@@ -324,7 +346,9 @@ export function createService(database) {
       })
       return {
         user: publicUser(user, data),
-        availableItems: data.items.filter((item) => !item.disabled && !occupiedItemIds.has(item.id)).map((item) => ({ ...item })),
+        availableItems: user.checkoutEnabled === false ? [] : data.items
+          .filter((item) => !item.disabled && !occupiedItemIds.has(item.id) && (!item.assignedUserIds.length || item.assignedUserIds.includes(userId)))
+          .map((item) => ({ ...item })),
         chores,
         checkoutBlocked: requiredChoreBlockers(data, userId, today.key).length > 0,
       }
@@ -336,6 +360,8 @@ export function createService(database) {
         const user = data.users.find((entry) => entry.id === userId && !entry.disabled)
         const item = data.items.find((entry) => entry.id === itemId && !entry.disabled)
         if (!user || !item) throw new AppError(404, 'User or item not found.')
+        if (user.checkoutEnabled === false) throw new AppError(403, 'Checkout access is not enabled for this user.')
+        if (item.assignedUserIds.length && !item.assignedUserIds.includes(userId)) throw new AppError(403, 'This item is not assigned to this user.')
         if (data.checkouts.some((entry) => entry.userId === userId)) throw new AppError(409, 'This user already has an item checked out.')
         if (data.checkouts.some((entry) => entry.itemId === itemId)) throw new AppError(409, 'That item is already checked out.')
         const today = localDate(new Date(), data.settings.timeZone)

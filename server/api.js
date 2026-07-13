@@ -12,8 +12,8 @@ const timeZone = z.string().refine((value) => {
 const dailyTime = z.object(Object.fromEntries(weekdays.map((day) => [day, z.coerce.number().int().min(0).max(1440)])))
 const setupSchema = z.object({ applicationName: z.string().trim().min(1).max(80), password: z.string().min(8).max(200), timeZone })
 const settingsSchema = z.object({ applicationName: z.string().trim().min(1).max(80), password: z.string().max(200).optional(), timeZone, dailyTimeMinutes: dailyTime })
-const usersSchema = z.array(z.object({ id: id.optional(), name: z.string().trim().min(1).max(80), pin: z.string().max(20).optional(), clearPin: z.boolean().optional(), disabled: z.boolean().optional() })).max(100)
-const itemsSchema = z.array(z.object({ id: id.optional(), name: z.string().trim().min(1).max(80), description: z.string().max(500).optional(), isTimed: z.boolean().optional(), disabled: z.boolean().optional() })).max(250)
+const usersSchema = z.array(z.object({ id: id.optional(), name: z.string().trim().min(1).max(80), pin: z.string().max(20).optional(), clearPin: z.boolean().optional(), disabled: z.boolean().optional(), checkoutEnabled: z.boolean().optional() })).max(100)
+const itemsSchema = z.array(z.object({ id: id.optional(), name: z.string().trim().min(1).max(80), description: z.string().max(500).optional(), isTimed: z.boolean().optional(), disabled: z.boolean().optional(), assignedUserIds: z.array(id).max(100).optional() })).max(250)
 const choresSchema = z.array(z.object({ id: id.optional(), title: z.string().trim().min(1).max(120), description: z.string().max(500).optional(), rewardMinutes: z.coerce.number().int().min(0).max(1440), recurrence: z.enum(['once', 'daily', 'weekly']), assignedUserIds: z.array(id).max(100).optional(), disabled: z.boolean().optional() })).max(250)
 
 function asyncRoute(handler) {

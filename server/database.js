@@ -52,10 +52,19 @@ async function migrate(data) {
         dailyTimeMinutes: { ...defaults.settings.dailyTimeMinutes, ...data.settings?.dailyTimeMinutes },
         sessionSecret: data.settings?.sessionSecret || defaults.settings.sessionSecret,
       },
-      users: Array.isArray(data.users) ? data.users : [],
-      items: Array.isArray(data.items) ? data.items : [],
+      users: Array.isArray(data.users) ? data.users.map((user) => ({
+        ...user,
+        checkoutEnabled: user.checkoutEnabled !== false,
+      })) : [],
+      items: Array.isArray(data.items) ? data.items.map((item) => ({
+        ...item,
+        assignedUserIds: Array.isArray(item.assignedUserIds) ? item.assignedUserIds : [],
+      })) : [],
       checkouts: Array.isArray(data.checkouts) ? data.checkouts : [],
-      chores: Array.isArray(data.chores) ? data.chores : [],
+      chores: Array.isArray(data.chores) ? data.chores.map((chore) => ({
+        ...chore,
+        assignedUserIds: Array.isArray(chore.assignedUserIds) ? chore.assignedUserIds : [],
+      })) : [],
       choreCompletions: Array.isArray(data.choreCompletions) ? data.choreCompletions : [],
       activity: Array.isArray(data.activity) ? data.activity : [],
     }
@@ -75,6 +84,7 @@ async function migrate(data) {
     name: String(user.userName || 'User'),
     pinHash: user.userPin ? await hashSecret(String(user.userPin)) : '',
     disabled: Boolean(user.disabled),
+    checkoutEnabled: true,
     timeRemainingSeconds: Math.max(0, asNumber(user.timeLeft)),
     timeDate: user.dayLastCheckedOut === today.weekday ? today.key : '',
     createdAt: new Date().toISOString(),
@@ -85,6 +95,7 @@ async function migrate(data) {
     description: String(item.description || ''),
     isTimed: Boolean(item.isTimed),
     disabled: Boolean(item.disabled),
+    assignedUserIds: [],
     createdAt: new Date().toISOString(),
   }))
   next.checkouts = (data.userItemAssociations || []).flatMap((association) => {

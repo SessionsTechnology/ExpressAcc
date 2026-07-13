@@ -161,3 +161,53 @@ test('zero-minute chores only block users who are specifically assigned', async 
   assert.equal((await service.getUserState(users[1].id)).checkoutBlocked, false)
   await service.checkout(users[1].id, item.id)
 })
+
+test('items assigned to specific users are only visible and usable by those users', async (t) => {
+  const { service, user, item } = await fixture(t)
+  await service.saveUsers([{ id: user.id, name: 'Alex' }, { name: 'Sam' }])
+  const users = (await service.getAdminState()).users
+  await service.saveItems([{
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    isTimed: item.isTimed,
+    assignedUserIds: [users[0].id],
+  }])
+
+  assert.deepEqual((await service.getUserState(users[0].id)).availableItems.map((entry) => entry.id), [item.id])
+  assert.deepEqual((await service.getUserState(users[1].id)).availableItems, [])
+  await assert.rejects(
+    () => service.checkout(users[1].id, item.id),
+    (error) => error instanceof AppError && error.status === 403 && error.message.includes('not assigned'),
+  )
+  await service.checkout(users[0].id, item.id)
+})
+
+test('chore-only users have no checkout timer or available items and cannot check out', async (t) => {
+  const { service, user, item } = await fixture(t)
+  await service.saveUsers([{ id: user.id, name: user.name, checkoutEnabled: false }])
+  await service.saveChores([{ title: 'Feed the dog', description: '', rewardMinutes: 0, recurrence: 'daily', assignedUserIds: [user.id] }])
+
+  const userState = await service.getUserState(user.id)
+  assert.equal(userState.user.checkoutEnabled, false)
+  assert.deepEqual(userState.availableItems, [])
+  assert.equal(userState.chores[0].title, 'Feed the dog')
+  await assert.rejects(
+    () => service.checkout(user.id, item.id),
+    (error) => error instanceof AppError && error.status === 403 && error.message.includes('not enabled'),
+  )
+
+  const kiosk = await service.getPublicState()
+  assert.equal(kiosk.users[0].checkoutEnabled, false)
+  assert.equal(kiosk.chores[0].assignees[0].name, user.name)
+  assert.deepEqual(kiosk.chores[0].assignedUserIds, [user.id])
+})
+
+test('checkout access cannot be removed while a user has an item out', async (t) => {
+  const { service, user, item } = await fixture(t)
+  await service.checkout(user.id, item.id)
+  await assert.rejects(
+    () => service.saveUsers([{ id: user.id, name: user.name, checkoutEnabled: false }]),
+    (error) => error instanceof AppError && error.status === 409 && error.message.includes('check in'),
+  )
+})
