@@ -85,6 +85,19 @@ function chorePeriod(chore, dayKey) {
   return 'once'
 }
 
+function isCheckoutRequirement(chore, userId) {
+  return !chore.disabled && Number(chore.rewardMinutes) === 0 && chore.assignedUserIds.includes(userId)
+}
+
+function choreCompletion(data, userId, chore, dayKey) {
+  const periodKey = chorePeriod(chore, dayKey)
+  return data.choreCompletions.find((entry) => entry.userId === userId && entry.choreId === chore.id && entry.periodKey === periodKey && entry.status !== 'rejected')
+}
+
+function requiredChoreBlockers(data, userId, dayKey) {
+  return data.chores.filter((chore) => isCheckoutRequirement(chore, userId) && choreCompletion(data, userId, chore, dayKey)?.status !== 'approved')
+}
+
 function sanitizedSettings(settings) {
   return {
     isSetup: settings.isSetup,
@@ -273,14 +286,14 @@ export function createService(database) {
       const today = localDate(new Date(), data.settings.timeZone)
       const occupiedItemIds = new Set(data.checkouts.map((checkout) => checkout.itemId))
       const chores = data.chores.filter((chore) => !chore.disabled && (!chore.assignedUserIds.length || chore.assignedUserIds.includes(userId))).map((chore) => {
-        const periodKey = chorePeriod(chore, today.key)
-        const completion = data.choreCompletions.find((entry) => entry.userId === userId && entry.choreId === chore.id && entry.periodKey === periodKey && entry.status !== 'rejected')
-        return { ...chore, completionStatus: completion?.status || null }
+        const completion = choreCompletion(data, userId, chore, today.key)
+        return { ...chore, requiredForCheckout: isCheckoutRequirement(chore, userId), completionStatus: completion?.status || null }
       })
       return {
         user: publicUser(user, data),
         availableItems: data.items.filter((item) => !item.disabled && !occupiedItemIds.has(item.id)).map((item) => ({ ...item })),
         chores,
+        checkoutBlocked: requiredChoreBlockers(data, userId, today.key).length > 0,
       }
     },
 
@@ -292,6 +305,12 @@ export function createService(database) {
         if (!user || !item) throw new AppError(404, 'User or item not found.')
         if (data.checkouts.some((entry) => entry.userId === userId)) throw new AppError(409, 'This user already has an item checked out.')
         if (data.checkouts.some((entry) => entry.itemId === itemId)) throw new AppError(409, 'That item is already checked out.')
+        const today = localDate(new Date(), data.settings.timeZone)
+        const blockers = requiredChoreBlockers(data, userId, today.key)
+        if (blockers.length) {
+          const titles = blockers.map((chore) => `“${chore.title}”`).join(', ')
+          throw new AppError(409, `Required ${blockers.length === 1 ? 'chore' : 'chores'} must be approved before checkout: ${titles}.`)
+        }
         if (item.isTimed && user.timeRemainingSeconds <= 0) throw new AppError(409, 'No timed-device allowance remains today.')
         const checkout = { id: randomUUID(), userId, itemId, checkedOutAt: new Date().toISOString(), remainingAtCheckout: user.timeRemainingSeconds }
         data.checkouts.push(checkout)

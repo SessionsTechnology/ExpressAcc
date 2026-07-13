@@ -93,3 +93,40 @@ test('approved chores add their reward to the user allowance once', async (t) =>
   assert.equal(after, before + 900)
   await assert.rejects(() => service.reviewCompletion(completion.id, 'approved'), (error) => error.status === 404)
 })
+
+test('assigned zero-minute chores require approval before any item can be checked out', async (t) => {
+  const { service, user, item } = await fixture(t)
+  await service.saveItems([{ id: item.id, name: item.name, description: item.description, isTimed: false }])
+  await service.saveChores([{ title: 'Make the bed', description: '', rewardMinutes: 0, recurrence: 'daily', assignedUserIds: [user.id] }])
+  const userState = await service.getUserState(user.id)
+  const chore = userState.chores[0]
+
+  assert.equal(chore.requiredForCheckout, true)
+  assert.equal(userState.checkoutBlocked, true)
+  await assert.rejects(
+    () => service.checkout(user.id, item.id),
+    (error) => error instanceof AppError && error.status === 409 && error.message.includes('Make the bed'),
+  )
+
+  const completion = await service.completeChore(user.id, chore.id)
+  assert.equal((await service.getUserState(user.id)).checkoutBlocked, true)
+  await assert.rejects(() => service.checkout(user.id, item.id), (error) => error instanceof AppError && error.status === 409)
+
+  await service.reviewCompletion(completion.id, 'approved')
+  assert.equal((await service.getUserState(user.id)).checkoutBlocked, false)
+  await service.checkout(user.id, item.id)
+  assert.equal((await service.getPublicState()).users[0].checkout.item.id, item.id)
+})
+
+test('zero-minute chores only block users who are specifically assigned', async (t) => {
+  const { service, user, item } = await fixture(t)
+  await service.saveUsers([{ id: user.id, name: 'Alex' }, { name: 'Sam' }])
+  const users = (await service.getAdminState()).users
+  await service.saveChores([
+    { title: 'Alex task', description: '', rewardMinutes: 0, recurrence: 'daily', assignedUserIds: [users[0].id] },
+    { title: 'Optional for everyone', description: '', rewardMinutes: 0, recurrence: 'daily', assignedUserIds: [] },
+  ])
+
+  assert.equal((await service.getUserState(users[1].id)).checkoutBlocked, false)
+  await service.checkout(users[1].id, item.id)
+})

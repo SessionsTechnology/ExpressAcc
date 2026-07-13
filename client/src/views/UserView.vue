@@ -59,16 +59,19 @@
             <div class="content-section-header mb-5">
               <div><p class="eyebrow mb-2">Available now</p><h2 class="section-heading">Choose an item</h2></div>
             </div>
+            <v-alert v-if="state.checkoutBlocked" type="warning" variant="tonal" class="mb-5">
+              Finish and get approval for {{ requiredChoresRemaining }} required {{ requiredChoresRemaining === 1 ? 'chore' : 'chores' }} before checking out an item.
+            </v-alert>
             <v-radio-group v-model="selectedItem" hide-details>
               <v-card
                 v-for="item in state.availableItems"
                 :key="item.id"
                 variant="outlined"
-                class="selection-card mb-3 pa-2 clickable"
-                :class="{ 'selection-card--selected': selectedItem === item.id }"
-                @click="selectedItem = item.id"
+                class="selection-card mb-3 pa-2"
+                :class="{ 'clickable': !state.checkoutBlocked, 'selection-card--selected': selectedItem === item.id }"
+                @click="selectItem(item.id)"
               >
-                <v-radio :value="item.id" color="primary">
+                <v-radio :value="item.id" color="primary" :disabled="state.checkoutBlocked">
                   <template #label>
                     <div class="available-item-label ml-2">
                       <div class="available-item-heading"><strong>{{ item.name }}</strong><v-chip v-if="item.isTimed" size="x-small" color="warning" variant="tonal">Uses time</v-chip></div>
@@ -82,19 +85,19 @@
           </v-card-text>
           <v-card-actions class="user-panel-actions">
             <v-spacer />
-            <v-btn color="primary" size="large" :disabled="!selectedItem" :loading="loading" @click="checkout">Check out selection</v-btn>
+            <v-btn color="primary" size="large" :disabled="!selectedItem || state.checkoutBlocked" :loading="loading" @click="checkout">Check out selection</v-btn>
           </v-card-actions>
         </v-card>
         <v-card class="panel-card user-panel">
           <v-card-text class="user-panel-body">
             <div class="content-section-header mb-5">
-              <div><p class="eyebrow mb-2">Earn more time</p><h2 class="section-heading">Chores</h2></div>
+              <div><p class="eyebrow mb-2">Responsibilities and rewards</p><h2 class="section-heading">Chores</h2></div>
             </div>
             <div class="chore-list">
               <div v-for="chore in state.chores" :key="chore.id" class="chore-list-item">
                 <v-avatar color="secondary" variant="tonal"><v-icon icon="mdi-broom" /></v-avatar>
                 <div class="chore-copy"><h3>{{ chore.title }}</h3><p class="muted text-caption">{{ chore.description || `${chore.recurrence} chore` }}</p></div>
-                <v-chip v-if="chore.completionStatus" :color="chore.completionStatus === 'approved' ? 'success' : 'warning'" variant="tonal" class="chore-action">{{ chore.completionStatus }}</v-chip><v-btn v-else color="secondary" variant="tonal" class="chore-action" @click="completeChore(chore)">Submit · +{{ chore.rewardMinutes }}m</v-btn>
+                <v-chip v-if="chore.completionStatus" :color="chore.completionStatus === 'approved' ? 'success' : 'warning'" variant="tonal" class="chore-action">{{ chore.completionStatus === 'pending' ? 'Awaiting approval' : 'Approved' }}</v-chip><v-btn v-else color="secondary" variant="tonal" class="chore-action" @click="completeChore(chore)">{{ chore.requiredForCheckout ? 'Submit required chore' : `Submit · +${chore.rewardMinutes}m` }}</v-btn>
               </div>
             </div>
             <div v-if="!state.chores.length" class="empty-state">No chores are assigned right now.</div>
@@ -106,7 +109,7 @@
 </template>
 
 <script setup>
-import { inject, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, userApi } from '../lib/api.js'
 import { formatDuration } from '../lib/format.js'
@@ -114,7 +117,8 @@ const route = useRoute(); const router = useRouter(); const socket = inject('soc
 const userId = route.params.id
 const token = ref(sessionStorage.getItem(`expressacc-user-${userId}`) || '')
 const pin = ref(''); const selectedItem = ref(''); const loading = ref(false); const error = ref(''); const message = ref('')
-const state = reactive({ user: null, availableItems: [], chores: [] })
+const state = reactive({ user: null, availableItems: [], chores: [], checkoutBlocked: false })
+const requiredChoresRemaining = computed(() => state.chores.filter((chore) => chore.requiredForCheckout && chore.completionStatus !== 'approved').length)
 async function load() {
   if (!token.value) return
   try { Object.assign(state, await userApi(userId, token.value)) }
@@ -125,6 +129,7 @@ async function act(path, body, success) { loading.value = true; error.value = ''
 const checkout = () => act('/checkout', { itemId: selectedItem.value }, 'Item checked out.')
 const checkin = () => act('/checkin', {}, 'Item checked in. Thank you!')
 const completeChore = (chore) => act(`/chores/${chore.id}/complete`, {}, `“${chore.title}” was sent for approval.`)
+const selectItem = (itemId) => { if (!state.checkoutBlocked) selectedItem.value = itemId }
 const onChanged = () => load()
 onMounted(async () => { if (token.value) await load(); socket.on('state:changed', onChanged) })
 onBeforeUnmount(() => socket.off('state:changed', onChanged))
