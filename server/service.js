@@ -109,6 +109,8 @@ function sanitizedSettings(settings) {
     isSetup: settings.isSetup,
     applicationName: settings.applicationName,
     timeZone: settings.timeZone,
+    kioskMessage: settings.kioskMessage,
+    kioskTimeoutSeconds: settings.kioskTimeoutSeconds,
     dailyTimeMinutes: settings.dailyTimeMinutes,
   }
 }
@@ -155,6 +157,7 @@ export function createService(database) {
     }).filter((chore) => chore.assignees.length > 0)
     return {
       applicationName: data.settings.applicationName,
+      kioskMessage: data.settings.kioskMessage,
       users: activeUsers.map((user) => ({
         ...publicUser(user, data),
         assignedChoreCount: outstandingChores.filter((chore) => chore.assignees.some((assignee) => assignee.id === user.id)).length,
@@ -168,7 +171,12 @@ export function createService(database) {
 
     status() {
       const settings = state().settings
-      return { isSetup: settings.isSetup, applicationName: settings.applicationName, timeZone: settings.timeZone }
+      return {
+        isSetup: settings.isSetup,
+        applicationName: settings.applicationName,
+        timeZone: settings.timeZone,
+        kioskTimeoutSeconds: settings.kioskTimeoutSeconds,
+      }
     },
 
     async setup(input) {
@@ -212,6 +220,8 @@ export function createService(database) {
       return database.transaction((data) => {
         data.settings.applicationName = input.applicationName
         data.settings.timeZone = input.timeZone
+        if (input.kioskMessage !== undefined) data.settings.kioskMessage = input.kioskMessage.trim()
+        if (input.kioskTimeoutSeconds !== undefined) data.settings.kioskTimeoutSeconds = Number(input.kioskTimeoutSeconds)
         data.settings.dailyTimeMinutes = Object.fromEntries(weekdays.map((day) => [day, Number(input.dailyTimeMinutes[day] || 0)]))
         if (passwordHash) data.settings.passwordHash = passwordHash
         log(data, 'settings', 'Application settings updated')

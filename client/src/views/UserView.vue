@@ -2,10 +2,14 @@
   <v-row justify="center">
     <v-col cols="12" md="9" lg="8">
       <header class="page-header user-page-header mb-8">
-        <div v-if="!token" class="page-header-copy">
+        <div v-if="!accessReady" class="page-header-copy">
+          <p class="eyebrow mb-2">Profile access</p>
+          <h1 class="page-heading mb-3">Opening profile…</h1>
+        </div>
+        <div v-else-if="!token" class="page-header-copy">
           <p class="eyebrow mb-2">Profile access</p>
           <h1 class="page-heading mb-3">Enter your PIN</h1>
-          <p class="page-lede">Use the PIN your admin gave you. If you don’t have one, just continue.</p>
+          <p class="page-lede">Enter the PIN your admin gave you to continue.</p>
         </div>
         <div v-else-if="state.user" class="page-header-copy">
           <p class="eyebrow mb-2">Welcome</p>
@@ -16,7 +20,14 @@
         <v-btn to="/checkout" variant="text" prepend-icon="mdi-arrow-left">All users</v-btn>
       </header>
 
-      <v-card v-if="!token" class="panel-card pin-card mx-auto" max-width="520">
+      <v-card v-if="!accessReady" class="panel-card pin-card mx-auto" max-width="520">
+        <v-card-text class="pin-card-body text-center">
+          <v-progress-circular indeterminate color="primary" size="52" width="5" class="mb-5" />
+          <p class="muted mb-0">Checking profile access…</p>
+        </v-card-text>
+      </v-card>
+
+      <v-card v-else-if="!token" class="panel-card pin-card mx-auto" max-width="520">
         <v-card-text class="pin-card-body text-center">
           <v-avatar color="primary" variant="tonal" size="72" class="mb-6"><v-icon icon="mdi-dialpad" size="38" /></v-avatar>
           <v-alert v-if="error" type="error" variant="tonal" class="mb-5 text-left">{{ error }}</v-alert>
@@ -118,7 +129,11 @@ const route = useRoute(); const router = useRouter(); const socket = inject('soc
 const userId = route.params.id
 const token = ref(sessionStorage.getItem(`expressacc-user-${userId}`) || '')
 const pin = ref(''); const selectedItem = ref(''); const loading = ref(false); const error = ref(''); const message = ref('')
+const accessReady = ref(false)
+const idleTimeoutSeconds = ref(30)
 const state = reactive({ user: null, availableItems: [], chores: [], checkoutBlocked: false })
+const activityEvents = ['pointerdown', 'keydown', 'touchstart', 'scroll']
+let idleTimer; let lastActivityAt = Date.now()
 const requiredChoresRemaining = computed(() => state.chores.filter((chore) => chore.requiredForCheckout && chore.completionStatus !== 'approved').length)
 const choreButtonLabel = (chore) => {
   if (chore.requiredForCheckout && state.user.checkoutEnabled) return 'Submit required chore'
@@ -129,15 +144,60 @@ async function load() {
   try { Object.assign(state, await userApi(userId, token.value)) }
   catch (exception) { if (exception.status === 401) { token.value = ''; sessionStorage.removeItem(`expressacc-user-${userId}`) } else error.value = exception.message }
 }
+async function prepareAccess() {
+  try {
+    if (token.value) await load()
+    if (!token.value) {
+      const publicState = await api('/state')
+      const publicUser = publicState.users.find((user) => user.id === userId)
+      if (!publicUser) throw new Error('User not found.')
+      if (!publicUser.hasPin) await unlock()
+    }
+  } catch (exception) { error.value = exception.message }
+  finally { accessReady.value = true }
+}
+const timeoutMilliseconds = () => Math.max(5, Number(idleTimeoutSeconds.value) || 30) * 1000
+function leaveInactiveProfile() {
+  if (Date.now() - lastActivityAt < timeoutMilliseconds()) return scheduleIdleTimeout()
+  token.value = ''
+  sessionStorage.removeItem(`expressacc-user-${userId}`)
+  void router.replace('/checkout')
+}
+function scheduleIdleTimeout() {
+  window.clearTimeout(idleTimer)
+  const remaining = Math.max(0, timeoutMilliseconds() - (Date.now() - lastActivityAt))
+  idleTimer = window.setTimeout(leaveInactiveProfile, remaining)
+}
+function recordActivity() { lastActivityAt = Date.now(); scheduleIdleTimeout() }
+function checkAfterVisibilityChange() { if (!document.hidden) leaveInactiveProfile() }
+async function refreshIdleSettings() {
+  try {
+    const status = await api('/status')
+    idleTimeoutSeconds.value = Number(status.kioskTimeoutSeconds) || 30
+    scheduleIdleTimeout()
+  } catch (exception) { error.value = exception.message }
+}
 async function unlock() { loading.value = true; error.value = ''; try { const result = await api(`/users/${userId}/unlock`, { method: 'POST', body: { pin: pin.value } }); token.value = result.token; sessionStorage.setItem(`expressacc-user-${userId}`, result.token); await load() } catch (exception) { error.value = exception.message } finally { loading.value = false } }
 async function act(path, body, success) { loading.value = true; error.value = ''; try { await userApi(userId, token.value, path, { method: 'POST', body }); message.value = success; selectedItem.value = ''; await load() } catch (exception) { error.value = exception.message } finally { loading.value = false } }
 const checkout = () => act('/checkout', { itemId: selectedItem.value }, 'Item checked out.')
 const checkin = () => act('/checkin', {}, 'Item checked in. Thank you!')
 const completeChore = (chore) => act(`/chores/${chore.id}/complete`, {}, `“${chore.title}” was sent for approval.`)
 const selectItem = (itemId) => { if (!state.checkoutBlocked) selectedItem.value = itemId }
-const onChanged = () => load()
-onMounted(async () => { if (token.value) await load(); socket.on('state:changed', onChanged) })
-onBeforeUnmount(() => socket.off('state:changed', onChanged))
+const onChanged = () => { if (token.value) load(); else prepareAccess(); refreshIdleSettings() }
+onMounted(async () => {
+  lastActivityAt = Date.now()
+  for (const event of activityEvents) window.addEventListener(event, recordActivity, { passive: true })
+  document.addEventListener('visibilitychange', checkAfterVisibilityChange)
+  scheduleIdleTimeout()
+  await Promise.all([refreshIdleSettings(), prepareAccess()])
+  socket.on('state:changed', onChanged)
+})
+onBeforeUnmount(() => {
+  window.clearTimeout(idleTimer)
+  for (const event of activityEvents) window.removeEventListener(event, recordActivity)
+  document.removeEventListener('visibilitychange', checkAfterVisibilityChange)
+  socket.off('state:changed', onChanged)
+})
 </script>
 
 <style scoped>

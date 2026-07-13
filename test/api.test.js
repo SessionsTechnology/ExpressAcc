@@ -40,13 +40,30 @@ test('HTTP setup and admin authentication protect private state', async (t) => {
   const cookie = login.headers.get('set-cookie').split(';')[0]
   const authorized = await fetch(`${base}/admin/state`, { headers: { cookie } })
   assert.equal(authorized.status, 200)
-  assert.equal((await authorized.json()).settings.applicationName, 'API Test')
+  const authorizedState = await authorized.json()
+  assert.equal(authorizedState.settings.applicationName, 'API Test')
+
+  const updatedSettings = await fetch(`${base}/admin/settings`, {
+    method: 'PATCH', headers: { cookie, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      ...authorizedState.settings,
+      password: '',
+      kioskMessage: 'Welcome to the kiosk',
+      kioskTimeoutSeconds: 45,
+    }),
+  })
+  assert.equal(updatedSettings.status, 200)
+  assert.equal((await updatedSettings.json()).kioskTimeoutSeconds, 45)
+  const publicState = await fetch(`${base}/state`)
+  assert.equal((await publicState.json()).kioskMessage, 'Welcome to the kiosk')
 
   const savedUsers = await fetch(`${base}/admin/users`, {
     method: 'PUT', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify([{ name: 'Alex' }]),
   })
   assert.equal(savedUsers.status, 200)
   const user = (await savedUsers.json())[0]
+  const publicUsers = await (await fetch(`${base}/state`)).json()
+  assert.equal(publicUsers.users.find((entry) => entry.id === user.id).hasPin, false)
 
   const setTime = await fetch(`${base}/admin/users/${user.id}/time`, {
     method: 'PUT', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ timeRemainingSeconds: 1800 }),

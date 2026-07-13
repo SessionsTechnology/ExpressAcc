@@ -16,6 +16,8 @@ export function emptyDatabase() {
       passwordHash: '',
       sessionSecret: randomBytes(32).toString('base64url'),
       timeZone: process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      kioskMessage: '',
+      kioskTimeoutSeconds: 30,
       dailyTimeMinutes: Object.fromEntries(weekdays.map((day) => [day, 0])),
     },
     users: [],

@@ -9,6 +9,7 @@
     </header>
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-6">{{ error }}</v-alert>
+    <v-alert v-if="kioskMessage" color="primary" variant="tonal" icon="mdi-bullhorn-outline" class="kiosk-message mb-7">{{ kioskMessage }}</v-alert>
     <div class="content-section-header mb-4">
       <div><p class="eyebrow mb-2">Profiles</p><h2 class="section-heading">Choose your name</h2></div>
     </div>
@@ -81,8 +82,9 @@ import { formatDuration } from '../lib/format.js'
 const socket = inject('socket')
 const users = ref([])
 const chores = ref([])
+const kioskMessage = ref('')
 const error = ref('')
-const update = (state) => { users.value = state.users; chores.value = state.chores || [] }
+const update = (state) => { users.value = state.users; chores.value = state.chores || []; kioskMessage.value = state.kioskMessage || '' }
 const recurrenceLabel = (recurrence) => ({ once: 'One-time chore', daily: 'Daily chore', weekly: 'Weekly chore' }[recurrence] || 'Chore')
 onMounted(async () => {
   try { update(await api('/state')) } catch (exception) { error.value = exception.message }
@@ -102,6 +104,10 @@ onBeforeUnmount(() => socket.off('checkout:update', update))
 .content-section-header {
   justify-content: space-between;
   gap: 16px;
+}
+
+.kiosk-message :deep(.v-alert__content) {
+  white-space: pre-line;
 }
 
 .chore-board-grid > .v-col {
