@@ -270,4 +270,44 @@ onBeforeUnmount(() => socket.off('checkout:update', update))
     padding: 0 20px 20px;
   }
 }
+
+@media (min-width: 600px) and (max-width: 1400px) and (max-height: 820px) and (orientation: landscape) {
+  .checkout-page > .page-header {
+    margin-bottom: 20px !important;
+  }
+
+  .page-header .eyebrow {
+    margin-bottom: 8px !important;
+  }
+
+  .kiosk-message {
+    min-height: 44px;
+    margin-bottom: 18px !important;
+    padding-block: 10px !important;
+  }
+
+  .checkout-page > .content-section-header {
+    margin-bottom: 12px !important;
+  }
+
+  .checkout-grid {
+    margin-bottom: 24px !important;
+  }
+
+  .checkout-card-body {
+    padding: 20px 20px 8px;
+  }
+
+  .checkout-card-person {
+    margin-bottom: 18px !important;
+  }
+
+  .checkout-card-name {
+    font-size: 1.6rem;
+  }
+
+  .checkout-card-actions {
+    padding: 12px 20px 14px;
+  }
+}
 </style>

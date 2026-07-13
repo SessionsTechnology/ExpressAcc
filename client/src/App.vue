@@ -1,8 +1,8 @@
 <template>
-  <v-app>
+  <v-app :class="{ 'compact-landscape': compactLandscape }">
     <div class="ambient ambient-one" aria-hidden="true" />
     <div class="ambient ambient-two" aria-hidden="true" />
-    <v-app-bar color="surface" flat height="82" class="app-bar">
+    <v-app-bar color="surface" flat :height="compactLandscape ? 66 : 82" class="app-bar">
       <div class="app-bar-content">
         <v-btn to="/" variant="text" class="brand" aria-label="ExpressACC home">
           <span class="brand-mark"><v-icon icon="mdi-home-heart" /></span>
@@ -31,23 +31,30 @@
 </template>
 
 <script setup>
-import { inject, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useTheme } from 'vuetify'
+import { useDisplay, useTheme } from 'vuetify'
 import { api } from './lib/api.js'
 
 const socket = inject('socket')
 const router = useRouter()
 const route = useRoute()
 const theme = useTheme()
+const { height: viewportHeight, width: viewportWidth } = useDisplay()
 const ready = ref(false)
 const connected = ref(socket.connected)
 const status = reactive({})
+const compactLandscape = computed(() => (
+  viewportWidth.value >= 600
+  && viewportWidth.value <= 1400
+  && viewportHeight.value <= 820
+  && viewportWidth.value > viewportHeight.value
+))
 
 function applyStatus(nextStatus) {
   Object.assign(status, nextStatus)
   const darkMode = Boolean(status.darkMode)
-  theme.global.name.value = darkMode ? 'expressAccDark' : 'expressAcc'
+  theme.change(darkMode ? 'expressAccDark' : 'expressAcc')
   document.documentElement.dataset.theme = darkMode ? 'dark' : 'light'
 }
 

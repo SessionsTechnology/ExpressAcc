@@ -200,6 +200,22 @@ p {
   width: min(1240px, 100%);
 }
 
+.compact-landscape .app-container {
+  padding-top: 28px !important;
+  padding-bottom: 32px !important;
+}
+
+.compact-landscape .page-heading,
+.compact-landscape .page-title,
+.compact-landscape .page-header .page-heading {
+  font-size: clamp(2.4rem, 4.2vw, 3.5rem) !important;
+}
+
+.compact-landscape .page-header {
+  gap: 14px;
+  padding-bottom: 16px;
+}
+
 .loading-screen {
   display: flex;
   min-height: 68vh;
