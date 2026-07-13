@@ -427,6 +427,35 @@ export function createService(database) {
       })
     },
 
+    async undoChoreSubmission(userId, choreId) {
+      return database.transaction((data) => {
+        const user = data.users.find((entry) => entry.id === userId)
+        const chore = data.chores.find((entry) => entry.id === choreId)
+        if (!user || !chore) throw new AppError(404, 'Chore submission not found.')
+        const today = localDate(new Date(), data.settings.timeZone)
+        const periodKey = chorePeriod(chore, today.key)
+        const completion = data.choreCompletions.find((entry) => (
+          entry.userId === userId
+          && entry.choreId === choreId
+          && entry.periodKey === periodKey
+          && entry.status === 'pending'
+        ))
+        if (!completion) {
+          const approved = data.choreCompletions.some((entry) => (
+            entry.userId === userId
+            && entry.choreId === choreId
+            && entry.periodKey === periodKey
+            && entry.status === 'approved'
+          ))
+          if (approved) throw new AppError(409, 'Approved chore submissions cannot be undone.')
+          throw new AppError(404, 'Pending chore submission not found.')
+        }
+        data.choreCompletions = data.choreCompletions.filter((entry) => entry.id !== completion.id)
+        log(data, 'chore', `${user.name} withdrew “${chore.title}” from approval`, { completionId: completion.id })
+        return { undone: true }
+      })
+    },
+
     async reviewCompletion(completionId, status) {
       return database.transaction((data) => {
         resetDayIfNeeded(data)

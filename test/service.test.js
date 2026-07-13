@@ -125,6 +125,23 @@ test('approved chores add their reward to the user allowance once', async (t) =>
   await assert.rejects(() => service.reviewCompletion(completion.id, 'approved'), (error) => error.status === 404)
 })
 
+test('users can undo pending chore submissions but not approved ones', async (t) => {
+  const { service, user } = await fixture(t)
+  await service.saveChores([{ title: 'Dishes', description: '', rewardMinutes: 15, recurrence: 'daily', assignedUserIds: [user.id] }])
+  const chore = (await service.getAdminState()).chores[0]
+  await service.completeChore(user.id, chore.id)
+  assert.equal((await service.getUserState(user.id)).chores[0].completionStatus, 'pending')
+
+  assert.deepEqual(await service.undoChoreSubmission(user.id, chore.id), { undone: true })
+  assert.equal((await service.getUserState(user.id)).chores[0].completionStatus, null)
+  const resubmitted = await service.completeChore(user.id, chore.id)
+  await service.reviewCompletion(resubmitted.id, 'approved')
+  await assert.rejects(
+    () => service.undoChoreSubmission(user.id, chore.id),
+    (error) => error instanceof AppError && error.status === 409 && error.message.includes('cannot be undone'),
+  )
+})
+
 test('resetting an approved chore reverses its current-day reward and permits resubmission', async (t) => {
   const { service, user } = await fixture(t)
   await service.saveChores([{ title: 'Dishes', description: '', rewardMinutes: 15, recurrence: 'daily', assignedUserIds: [user.id] }])

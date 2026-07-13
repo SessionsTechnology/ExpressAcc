@@ -53,7 +53,9 @@
               <div v-for="chore in state.chores" :key="chore.id" class="chore-list-item">
                 <v-avatar color="secondary" variant="tonal"><v-icon icon="mdi-broom" /></v-avatar>
                 <div class="chore-copy"><h3>{{ chore.title }}</h3><p class="muted text-caption">{{ chore.description || `${chore.recurrence} chore` }}</p></div>
-                <v-chip v-if="chore.completionStatus" :color="chore.completionStatus === 'approved' ? 'success' : 'warning'" variant="tonal" class="chore-action">{{ chore.completionStatus === 'pending' ? 'Awaiting approval' : 'Approved' }}</v-chip><v-btn v-else color="secondary" variant="tonal" class="chore-action" @click="completeChore(chore)">{{ choreButtonLabel(chore) }}</v-btn>
+                <v-chip v-if="chore.completionStatus === 'approved'" color="success" variant="tonal" class="chore-action">Approved</v-chip>
+                <v-btn v-else-if="chore.completionStatus === 'pending'" color="warning" variant="tonal" prepend-icon="mdi-undo" class="chore-action" :loading="loading" @click="undoChoreSubmission(chore)">Undo submission</v-btn>
+                <v-btn v-else color="secondary" variant="tonal" class="chore-action" :loading="loading" @click="completeChore(chore)">{{ choreButtonLabel(chore) }}</v-btn>
               </div>
             </div>
             <div v-if="!state.chores.length" class="empty-state">No chores are assigned right now.</div>
@@ -178,10 +180,11 @@ async function refreshIdleSettings() {
   } catch (exception) { error.value = exception.message }
 }
 async function unlock() { loading.value = true; error.value = ''; try { const result = await api(`/users/${userId}/unlock`, { method: 'POST', body: { pin: pin.value } }); token.value = result.token; sessionStorage.setItem(`expressacc-user-${userId}`, result.token); await load() } catch (exception) { error.value = exception.message } finally { loading.value = false } }
-async function act(path, body, success) { loading.value = true; error.value = ''; try { await userApi(userId, token.value, path, { method: 'POST', body }); message.value = success; selectedItem.value = ''; await load() } catch (exception) { error.value = exception.message } finally { loading.value = false } }
+async function act(path, body, success, method = 'POST') { loading.value = true; error.value = ''; try { await userApi(userId, token.value, path, { method, body }); message.value = success; selectedItem.value = ''; await load() } catch (exception) { error.value = exception.message } finally { loading.value = false } }
 const checkout = () => act('/checkout', { itemId: selectedItem.value }, 'Item checked out.')
 const checkin = () => act('/checkin', {}, 'Item checked in. Thank you!')
 const completeChore = (chore) => act(`/chores/${chore.id}/complete`, {}, `“${chore.title}” was sent for approval.`)
+const undoChoreSubmission = (chore) => act(`/chores/${chore.id}/complete`, undefined, `“${chore.title}” is available to submit again.`, 'DELETE')
 const selectItem = (itemId) => { if (!state.checkoutBlocked) selectedItem.value = itemId }
 const onChanged = () => { if (token.value) load(); else prepareAccess(); refreshIdleSettings() }
 onMounted(async () => {

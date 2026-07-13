@@ -106,6 +106,7 @@ export function createApiRouter({ service, notify }) {
   }))
   router.post('/users/:userId/checkin', requireUser, changed(async (request) => service.checkin(request.params.userId)))
   router.post('/users/:userId/chores/:choreId/complete', requireUser, changed(async (request) => service.completeChore(request.params.userId, request.params.choreId)))
+  router.delete('/users/:userId/chores/:choreId/complete', requireUser, changed(async (request) => service.undoChoreSubmission(request.params.userId, request.params.choreId)))
 
   router.use((_request, _response, next) => next(new AppError(404, 'API endpoint not found.')))
   router.use((error, _request, response, _next) => {

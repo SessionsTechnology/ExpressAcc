@@ -87,7 +87,17 @@ test('HTTP setup and admin authentication protect private state', async (t) => {
   const submitted = await fetch(`${base}/users/${user.id}/chores/${chore.id}/complete`, {
     method: 'POST', headers: { authorization: `Bearer ${userToken}` },
   })
-  const completion = await submitted.json()
+  let completion = await submitted.json()
+  const undone = await fetch(`${base}/users/${user.id}/chores/${chore.id}/complete`, {
+    method: 'DELETE', headers: { authorization: `Bearer ${userToken}` },
+  })
+  assert.equal(undone.status, 200)
+  assert.equal((await undone.json()).undone, true)
+  const resubmitted = await fetch(`${base}/users/${user.id}/chores/${chore.id}/complete`, {
+    method: 'POST', headers: { authorization: `Bearer ${userToken}` },
+  })
+  assert.equal(resubmitted.status, 200)
+  completion = await resubmitted.json()
   const approved = await fetch(`${base}/admin/completions/${completion.id}/review`, {
     method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ status: 'approved' }),
   })
