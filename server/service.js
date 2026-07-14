@@ -2,6 +2,10 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import { hashSecret, verifySecret } from './auth.js'
 import { emptyDatabase, weekdays } from './database.js'
 
+const MAX_USERS = 100
+const MAX_ITEMS = 250
+const MAX_CHORES = 250
+
 export class AppError extends Error {
   constructor(status, message) {
     super(message)
@@ -50,6 +54,10 @@ function publicUser(user, data, now = new Date()) {
       item: { id: item.id, name: item.name, description: item.description, isTimed: item.isTimed },
     } : null,
   }
+}
+
+function adminUser(user, data) {
+  return { ...publicUser(user, data), createdAt: user.createdAt }
 }
 
 function resetDayIfNeeded(data, now = new Date()) {
@@ -214,7 +222,7 @@ export function createService(database) {
       const data = state()
       return {
         settings: sanitizedSettings(data.settings),
-        users: data.users.map((user) => ({ ...publicUser(user, data), createdAt: user.createdAt })),
+        users: data.users.map((user) => adminUser(user, data)),
         items: data.items.map((item) => ({ ...item })),
         chores: data.chores.map((chore) => ({ ...chore })),
         completions: data.choreCompletions.slice(0, 200).map((completion) => ({
@@ -230,15 +238,82 @@ export function createService(database) {
       let passwordHash
       if (input.password) passwordHash = await hashSecret(input.password)
       return database.transaction((data) => {
-        data.settings.applicationName = input.applicationName
-        data.settings.timeZone = input.timeZone
+        if (input.applicationName !== undefined) data.settings.applicationName = input.applicationName
+        if (input.timeZone !== undefined) data.settings.timeZone = input.timeZone
         if (input.darkMode !== undefined) data.settings.darkMode = Boolean(input.darkMode)
         if (input.kioskMessage !== undefined) data.settings.kioskMessage = input.kioskMessage.trim()
         if (input.kioskTimeoutSeconds !== undefined) data.settings.kioskTimeoutSeconds = Number(input.kioskTimeoutSeconds)
-        data.settings.dailyTimeMinutes = Object.fromEntries(weekdays.map((day) => [day, Number(input.dailyTimeMinutes[day] || 0)]))
+        if (input.dailyTimeMinutes !== undefined) {
+          data.settings.dailyTimeMinutes = Object.fromEntries(weekdays.map((day) => [day, Number(input.dailyTimeMinutes[day] || 0)]))
+        }
         if (passwordHash) data.settings.passwordHash = passwordHash
         log(data, 'settings', 'Application settings updated')
         return sanitizedSettings(data.settings)
+      })
+    },
+
+    async createUser(input) {
+      const nextPinHash = input.pin ? await hashSecret(input.pin) : ''
+      return database.transaction((data) => {
+        if (data.users.length >= MAX_USERS) throw new AppError(409, `A maximum of ${MAX_USERS} users is allowed.`)
+        const user = {
+          id: randomUUID(),
+          name: input.name.trim(),
+          pinHash: input.clearPin ? '' : nextPinHash,
+          disabled: Boolean(input.disabled),
+          checkoutEnabled: input.checkoutEnabled ?? true,
+          timeRemainingSeconds: 0,
+          timeDate: '',
+          createdAt: new Date().toISOString(),
+        }
+        data.users.push(user)
+        log(data, 'users', `User created: ${user.name}`, { userId: user.id })
+        return adminUser(user, data)
+      })
+    },
+
+    async updateUser(userId, input) {
+      const nextPinHash = input.pin ? await hashSecret(input.pin) : undefined
+      return database.transaction((data) => {
+        const user = data.users.find((entry) => entry.id === userId)
+        if (!user) throw new AppError(404, 'User not found.')
+        const hasCheckout = data.checkouts.some((checkout) => checkout.userId === user.id)
+        if (input.disabled === true && hasCheckout) {
+          throw new AppError(409, `${user.name} must check in before being disabled.`)
+        }
+        if (input.checkoutEnabled === false && hasCheckout) {
+          throw new AppError(409, `${user.name} must check in before checkout access can be turned off.`)
+        }
+        if (input.name !== undefined) user.name = input.name.trim()
+        if (input.clearPin) user.pinHash = ''
+        else if (nextPinHash) user.pinHash = nextPinHash
+        if (input.disabled !== undefined) user.disabled = Boolean(input.disabled)
+        if (input.checkoutEnabled !== undefined) user.checkoutEnabled = Boolean(input.checkoutEnabled)
+        log(data, 'users', `User updated: ${user.name}`, { userId: user.id })
+        return adminUser(user, data)
+      })
+    },
+
+    async deleteUser(userId) {
+      return database.transaction((data) => {
+        const index = data.users.findIndex((entry) => entry.id === userId)
+        if (index === -1) throw new AppError(404, 'User not found.')
+        const user = data.users[index]
+        if (data.checkouts.some((checkout) => checkout.userId === user.id)) {
+          throw new AppError(409, `${user.name} must check in before being deleted.`)
+        }
+        if (data.choreCompletions.some((completion) => completion.userId === user.id && completion.status === 'pending')) {
+          throw new AppError(409, `${user.name} has a pending chore submission. Review it before deleting this user.`)
+        }
+        const assignedItems = data.items.filter((item) => item.assignedUserIds?.includes(user.id)).map((item) => `item “${item.name}”`)
+        const assignedChores = data.chores.filter((chore) => chore.assignedUserIds?.includes(user.id)).map((chore) => `chore “${chore.title}”`)
+        const assignments = [...assignedItems, ...assignedChores]
+        if (assignments.length) {
+          throw new AppError(409, `${user.name} is still assigned to ${assignments.join(', ')}. Remove the user from those assignments before deleting.`)
+        }
+        data.users.splice(index, 1)
+        log(data, 'users', `User deleted: ${user.name}`, { userId: user.id })
+        return { deleted: true }
       })
     },
 
@@ -273,6 +348,52 @@ export function createService(database) {
       })
     },
 
+    async createItem(input) {
+      return database.transaction((data) => {
+        if (data.items.length >= MAX_ITEMS) throw new AppError(409, `A maximum of ${MAX_ITEMS} items is allowed.`)
+        const item = {
+          id: randomUUID(),
+          name: input.name.trim(),
+          description: input.description?.trim() || '',
+          isTimed: Boolean(input.isTimed),
+          disabled: Boolean(input.disabled),
+          assignedUserIds: input.assignedUserIds ?? [],
+          createdAt: new Date().toISOString(),
+        }
+        data.items.push(item)
+        log(data, 'items', `Item created: ${item.name}`, { itemId: item.id })
+        return { ...item }
+      })
+    },
+
+    async updateItem(itemId, input) {
+      return database.transaction((data) => {
+        const item = data.items.find((entry) => entry.id === itemId)
+        if (!item) throw new AppError(404, 'Item not found.')
+        if (input.name !== undefined) item.name = input.name.trim()
+        if (input.description !== undefined) item.description = input.description.trim()
+        if (input.isTimed !== undefined) item.isTimed = Boolean(input.isTimed)
+        if (input.disabled !== undefined) item.disabled = Boolean(input.disabled)
+        if (input.assignedUserIds !== undefined) item.assignedUserIds = input.assignedUserIds
+        log(data, 'items', `Item updated: ${item.name}`, { itemId: item.id })
+        return { ...item }
+      })
+    },
+
+    async deleteItem(itemId) {
+      return database.transaction((data) => {
+        const index = data.items.findIndex((entry) => entry.id === itemId)
+        if (index === -1) throw new AppError(404, 'Item not found.')
+        const item = data.items[index]
+        if (data.checkouts.some((checkout) => checkout.itemId === item.id)) {
+          throw new AppError(409, `${item.name} must be checked in before being deleted.`)
+        }
+        data.items.splice(index, 1)
+        log(data, 'items', `Item deleted: ${item.name}`, { itemId: item.id })
+        return { deleted: true }
+      })
+    },
+
     async saveItems(items) {
       return database.transaction((data) => {
         const ids = new Set(items.map((item) => item.id).filter(Boolean))
@@ -293,6 +414,54 @@ export function createService(database) {
         })
         log(data, 'items', 'Item list updated', { count: data.items.length })
         return data.items
+      })
+    },
+
+    async createChore(input) {
+      return database.transaction((data) => {
+        if (data.chores.length >= MAX_CHORES) throw new AppError(409, `A maximum of ${MAX_CHORES} chores is allowed.`)
+        const chore = {
+          id: randomUUID(),
+          title: input.title.trim(),
+          description: input.description?.trim() || '',
+          rewardMinutes: Number(input.rewardMinutes || 0),
+          recurrence: input.recurrence,
+          assignedUserIds: input.assignedUserIds ?? [],
+          disabled: Boolean(input.disabled),
+          createdAt: new Date().toISOString(),
+        }
+        data.chores.push(chore)
+        log(data, 'chores', `Chore created: ${chore.title}`, { choreId: chore.id })
+        return { ...chore }
+      })
+    },
+
+    async updateChore(choreId, input) {
+      return database.transaction((data) => {
+        const chore = data.chores.find((entry) => entry.id === choreId)
+        if (!chore) throw new AppError(404, 'Chore not found.')
+        if (input.title !== undefined) chore.title = input.title.trim()
+        if (input.description !== undefined) chore.description = input.description.trim()
+        if (input.rewardMinutes !== undefined) chore.rewardMinutes = Number(input.rewardMinutes)
+        if (input.recurrence !== undefined) chore.recurrence = input.recurrence
+        if (input.assignedUserIds !== undefined) chore.assignedUserIds = input.assignedUserIds
+        if (input.disabled !== undefined) chore.disabled = Boolean(input.disabled)
+        log(data, 'chores', `Chore updated: ${chore.title}`, { choreId: chore.id })
+        return { ...chore }
+      })
+    },
+
+    async deleteChore(choreId) {
+      return database.transaction((data) => {
+        const index = data.chores.findIndex((entry) => entry.id === choreId)
+        if (index === -1) throw new AppError(404, 'Chore not found.')
+        const chore = data.chores[index]
+        if (data.choreCompletions.some((completion) => completion.choreId === chore.id && completion.status === 'pending')) {
+          throw new AppError(409, `${chore.title} has a pending submission. Review it before deleting this chore.`)
+        }
+        data.chores.splice(index, 1)
+        log(data, 'chores', `Chore deleted: ${chore.title}`, { choreId: chore.id })
+        return { deleted: true }
       })
     },
 
