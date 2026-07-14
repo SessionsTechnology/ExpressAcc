@@ -200,6 +200,49 @@ p {
   width: min(1240px, 100%);
 }
 
+.demo-banner {
+  color: #fff;
+  background: linear-gradient(90deg, #6555cc, #5269e8);
+  box-shadow: 0 8px 24px rgba(63, 70, 150, .18);
+}
+
+.demo-banner__content {
+  display: flex;
+  align-items: center;
+  gap: 10px 16px;
+  width: min(1360px, 100%);
+  min-height: 44px;
+  margin-inline: auto;
+  padding: 8px 32px;
+  font-size: .82rem;
+}
+
+.demo-banner__credentials {
+  margin-left: auto;
+}
+
+.demo-banner code {
+  padding: 3px 7px;
+  color: #fff;
+  background: rgba(255, 255, 255, .16);
+  border: 1px solid rgba(255, 255, 255, .26);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-weight: 750;
+}
+
+@media (max-width: 700px) {
+  .demo-banner__content {
+    flex-wrap: wrap;
+    padding-inline: 20px;
+  }
+
+  .demo-banner__credentials {
+    width: 100%;
+    margin-left: 36px;
+  }
+}
+
 .compact-landscape .app-container {
   padding-top: 28px !important;
   padding-bottom: 32px !important;

@@ -1,15 +1,17 @@
 services:
   routioneer:
     build: .
-    image: routioneer:latest
+    image: routioneer:demo
     environment:
       TZ: ${TZ:-America/Chicago}
       DATABASE_FILE: /data/db.json
+      DEMO_MODE: "true"
+      DEMO_RESET_MINUTES: ${DEMO_RESET_MINUTES:-15}
+      DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD:-demo-admin}
     ports:
-      - "${PORT:-3001}:3001"
+      - "${DEMO_PORT:-3002}:3001"
     volumes:
-      # Keep the legacy key so upgrades continue mounting existing data.
-      - express-acc-data:/data
+      - routioneer-demo-data:/data
     init: true
     read_only: true
     tmpfs:
@@ -22,4 +24,4 @@ services:
     stop_grace_period: 15s
 
 volumes:
-  express-acc-data:
+  routioneer-demo-data:

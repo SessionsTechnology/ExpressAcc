@@ -1,5 +1,7 @@
 # Routioneer
 
+> This is the disposable demo branch. See [DEMO.md](DEMO.md) for its 15-minute reset behavior, isolated deployment settings, and update workflow from `main`.
+
 Routioneer is a self-hosted shared-item checkout, screen-time, and chore manager for families, classrooms, churches, and other small communities.
 
 Users can check shared items in and out, see their remaining timed-device allowance, and submit completed chores. Admins can monitor activity, adjust time, approve chore rewards, edit schedules, and back up or restore the installation.

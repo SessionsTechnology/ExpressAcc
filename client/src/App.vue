@@ -19,6 +19,14 @@
       </div>
     </v-app-bar>
     <v-main>
+      <div v-if="status.demo?.enabled" class="demo-banner" role="status" aria-live="polite">
+        <div class="demo-banner__content">
+          <v-icon icon="mdi-flask-outline" size="20" />
+          <strong>Live demo</strong>
+          <span>Sample data resets in {{ demoTimeRemaining }}</span>
+          <span class="demo-banner__credentials">Admin password: <code>{{ status.demo.adminPassword }}</code></span>
+        </div>
+      </div>
       <v-container class="app-container py-8 py-sm-12 py-lg-16">
         <router-view v-if="ready" />
         <div v-else class="loading-screen" role="status" aria-live="polite">
@@ -44,6 +52,14 @@ const { height: viewportHeight, width: viewportWidth } = useDisplay()
 const ready = ref(false)
 const connected = ref(socket.connected)
 const status = reactive({})
+const currentTime = ref(Date.now())
+let demoClock
+const demoTimeRemaining = computed(() => {
+  const remainingSeconds = Math.max(0, Math.ceil((new Date(status.demo?.nextResetAt).getTime() - currentTime.value) / 1000))
+  const minutes = Math.floor(remainingSeconds / 60)
+  const seconds = remainingSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+})
 const compactLandscape = computed(() => (
   viewportWidth.value >= 600
   && viewportWidth.value <= 1400
@@ -82,18 +98,23 @@ const onChanged = async () => {
 const onFamilyLocked = () => {
   if (route.meta.familySpace) void router.replace({ name: 'family-login', query: { redirect: route.fullPath } })
 }
+const onDemoReset = () => { window.location.assign('/') }
 
 onMounted(() => {
+  demoClock = window.setInterval(() => { currentTime.value = Date.now() }, 1000)
   bootstrap()
   socket.on('connect', onConnect)
   socket.on('disconnect', onDisconnect)
   socket.on('state:changed', onChanged)
   socket.on('family:locked', onFamilyLocked)
+  socket.on('demo:reset', onDemoReset)
 })
 onBeforeUnmount(() => {
+  window.clearInterval(demoClock)
   socket.off('connect', onConnect)
   socket.off('disconnect', onDisconnect)
   socket.off('state:changed', onChanged)
   socket.off('family:locked', onFamilyLocked)
+  socket.off('demo:reset', onDemoReset)
 })
 </script>

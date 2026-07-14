@@ -51,7 +51,7 @@ function getBearer(request) {
   return request.headers.authorization?.startsWith('Bearer ') ? request.headers.authorization.slice(7) : null
 }
 
-export function createApiRouter({ service, notify, recoveryLogger = console.warn }) {
+export function createApiRouter({ service, notify, recoveryLogger = console.warn, demo = null }) {
   const router = Router()
   const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false })
   const recoveryRequestLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: 'draft-8', legacyHeaders: false })
@@ -82,7 +82,10 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
   })
 
   router.get('/health', (_request, response) => response.json({ ok: true }))
-  router.get('/status', (_request, response) => response.json(service.status()))
+  router.get('/status', (_request, response) => response.json({
+    ...service.status(),
+    demo: demo?.status() || null,
+  }))
   router.post('/setup', loginLimiter, changed(async (request) => service.setup(setupSchema.parse(request.body))))
   router.get('/state', requireFamily, asyncRoute(async (_request, response) => response.json(await service.getPublicState())))
 

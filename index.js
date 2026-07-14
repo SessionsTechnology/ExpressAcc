@@ -7,6 +7,7 @@ import { Server } from 'socket.io'
 import { readCookie, verifyToken } from './server/auth.js'
 import { createApiRouter } from './server/api.js'
 import { createDatabase } from './server/database.js'
+import { createDemoController } from './server/demo.js'
 import { createService } from './server/service.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -15,6 +16,9 @@ const host = process.env.HOST || '0.0.0.0'
 
 export async function createApplication(options = {}) {
   const database = await createDatabase(options.databaseFile)
+  const demoOptions = options.demo || {}
+  const demoEnabled = demoOptions.enabled ?? process.env.DEMO_MODE === 'true'
+  const demo = demoEnabled ? await createDemoController({ database, ...demoOptions }) : null
   const service = createService(database)
   const app = express()
   const server = createServer(app)
@@ -41,6 +45,7 @@ export async function createApplication(options = {}) {
     service,
     notify: () => io.emit('state:changed'),
     recoveryLogger: options.recoveryLogger,
+    demo,
   }))
 
   const hasSocketSession = (socket, cookieNames, secret, scope) => {
@@ -93,16 +98,23 @@ export async function createApplication(options = {}) {
   }, 1000)
   ticker.unref()
 
+  demo?.start(async () => {
+    io.emit('demo:reset', demo.status())
+    io.emit('state:changed')
+    await publishCheckoutState()
+  })
+
   let closePromise
   const close = () => {
     if (!closePromise) {
       clearInterval(ticker)
+      demo?.close()
       closePromise = io.close()
     }
     return closePromise
   }
 
-  return { app, server, database, service, close }
+  return { app, server, database, service, demo, close }
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
