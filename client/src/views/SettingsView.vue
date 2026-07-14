@@ -30,11 +30,11 @@
       </v-window-item>
 
       <v-window-item value="users">
-        <v-card class="glass-card panel-card settings-panel pa-3 pa-sm-6"><v-card-text><div class="content-section-header settings-toolbar mb-5"><div><h2 class="section-heading">Household users</h2><p class="muted">Save each user separately. Checkout and disabled switches save automatically after the first save.</p></div><v-btn color="primary" prepend-icon="mdi-plus" :disabled="saving" @click="addUser">Add user</v-btn></div><v-alert v-if="demoMode" color="primary" variant="tonal" icon="mdi-lock-check-outline" class="mb-5">User PINs are disabled in the public demo.</v-alert>
+        <v-card class="glass-card panel-card settings-panel pa-3 pa-sm-6"><v-card-text><div class="content-section-header settings-toolbar mb-5"><div><h2 class="section-heading">Household users</h2><p class="muted">Save each user separately. Checkout and disabled switches save automatically after the first save.</p></div><v-btn color="primary" prepend-icon="mdi-plus" :disabled="saving" @click="addUser">Add user</v-btn></div>
           <v-card v-for="user in users" :key="accordionValue(user, 'user')" variant="outlined" class="settings-entry pa-4 mb-3">
             <div class="settings-user-grid">
               <v-text-field v-model="user.name" :disabled="isEntryBusy(user)" label="Name" hide-details />
-              <v-text-field v-if="!demoMode" v-model="user.pin" :disabled="isEntryBusy(user)" :label="user.hasPin ? 'New PIN (optional)' : 'PIN (optional)'" type="password" inputmode="numeric" hide-details />
+              <v-text-field v-model="user.pin" :disabled="demoMode || isEntryBusy(user)" :label="user.hasPin ? 'New PIN (optional)' : 'PIN (optional)'" type="password" inputmode="numeric" hide-details />
               <div class="settings-entry-controls">
                 <v-switch :model-value="user.checkoutEnabled" :disabled="isEntryBusy(user)" :loading="entryOperation(user) === 'toggle-checkoutEnabled'" label="Checkout access" color="primary" hide-details class="settings-switch" @update:model-value="saveToggle('users', user, 'checkoutEnabled', $event)" />
                 <v-switch :model-value="user.disabled" :disabled="isEntryBusy(user)" :loading="entryOperation(user) === 'toggle-disabled'" label="Disabled" color="warning" hide-details class="settings-switch" @update:model-value="saveToggle('users', user, 'disabled', $event)" />
