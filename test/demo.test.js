@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
+import { createApplication } from '../index.js'
 import { createDatabase } from '../server/database.js'
 import { createDemoController, nextDemoResetAt } from '../server/demo.js'
 import { createService } from '../server/service.js'
@@ -77,4 +78,64 @@ test('demo configuration rejects unsafe passwords and reset intervals', async (t
     () => createDemoController({ database, adminPassword: 'short' }),
     /at least 8 characters/,
   )
+})
+
+test('demo API blocks credential changes while allowing ordinary edits', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'routioneer-demo-api-'))
+  const application = await createApplication({
+    databaseFile: join(directory, 'db.json'),
+    demo: { enabled: true, adminPassword: 'test-demo-password', timeZone: 'UTC' },
+  })
+  await new Promise((resolve) => application.server.listen(0, '127.0.0.1', resolve))
+  const base = `http://127.0.0.1:${application.server.address().port}/api`
+  t.after(async () => {
+    await application.close()
+    await rm(directory, { recursive: true, force: true })
+  })
+
+  const login = await fetch(`${base}/admin/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ password: 'test-demo-password' }),
+  })
+  assert.equal(login.status, 200)
+  const cookie = login.headers.get('set-cookie').split(';')[0]
+  const adminRequest = (path, body, method = 'POST') => fetch(`${base}${path}`, {
+    method,
+    headers: { cookie, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const expectLocked = async (response) => {
+    assert.equal(response.status, 403)
+    assert.deepEqual(await response.json(), { error: 'Credential changes are disabled in the public demo.' })
+  }
+
+  await expectLocked(await adminRequest('/admin/settings', { password: 'changed-password' }, 'PATCH'))
+  await expectLocked(await adminRequest('/admin/settings', { familyPassword: 'family-password' }, 'PATCH'))
+  await expectLocked(await adminRequest('/admin/settings', { clearFamilyPassword: true }, 'PATCH'))
+  await expectLocked(await adminRequest('/admin/users/demo-user-jordan', { pin: '1234' }, 'PATCH'))
+  await expectLocked(await adminRequest('/admin/users/demo-user-jordan', { clearPin: true }, 'PATCH'))
+  await expectLocked(await adminRequest('/admin/users', { name: 'Protected user', pin: '1234' }))
+  await expectLocked(await adminRequest('/admin/import', {}))
+  await expectLocked(await fetch(`${base}/admin/recovery/request`, { method: 'POST' }))
+  await expectLocked(await fetch(`${base}/admin/recovery/reset`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ code: '0000-0000-0000-0000', password: 'changed-password' }),
+  }))
+
+  const ordinarySettings = await adminRequest('/admin/settings', { darkMode: true }, 'PATCH')
+  assert.equal(ordinarySettings.status, 200)
+  assert.equal((await ordinarySettings.json()).darkMode, true)
+  const ordinaryUser = await adminRequest('/admin/users', { name: 'Temporary visitor' })
+  assert.equal(ordinaryUser.status, 200)
+  assert.equal((await ordinaryUser.json()).name, 'Temporary visitor')
+
+  const changedLogin = await fetch(`${base}/admin/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ password: 'changed-password' }),
+  })
+  assert.equal(changedLogin.status, 401)
+  assert.equal((await (await fetch(`${base}/status`)).json()).familySpaceProtected, false)
 })

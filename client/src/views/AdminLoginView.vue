@@ -12,7 +12,7 @@
           <v-form v-if="!recoveryMode" @submit.prevent="login">
             <v-text-field v-model="password" label="Admin password" type="password" autocomplete="current-password" autofocus />
             <v-btn type="submit" color="primary" size="large" append-icon="mdi-arrow-right" block :loading="loading">Sign in</v-btn>
-            <v-btn class="mt-3" variant="text" block :disabled="loading" @click="startRecovery">Forgot admin password?</v-btn>
+            <v-btn v-if="!demoMode" class="mt-3" variant="text" block :disabled="loading" @click="startRecovery">Forgot admin password?</v-btn>
           </v-form>
           <v-form v-else @submit.prevent="resetPassword">
             <v-alert v-if="recoveryRequested" type="info" variant="tonal" class="mb-5 text-left">
@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-import { inject, reactive, ref } from 'vue'
+import { inject, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../lib/api.js'
 const router = useRouter()
@@ -49,6 +49,11 @@ const success = ref('')
 const recoveryMode = ref(false)
 const recoveryRequested = ref(false)
 const recovery = reactive({ code: '', password: '', confirmPassword: '' })
+const demoMode = ref(false)
+onMounted(async () => {
+  try { demoMode.value = Boolean((await api('/status')).demo?.enabled) }
+  catch { demoMode.value = false }
+})
 async function login() {
   loading.value = true; error.value = ''; success.value = ''
   try { await api('/admin/login', { method: 'POST', body: { password: password.value } }); socket.disconnect().connect(); await router.replace('/admin') }

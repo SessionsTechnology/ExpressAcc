@@ -58,6 +58,14 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
   const recoveryLifetimeMs = 10 * 60 * 1000
   let pendingRecovery = null
 
+  const demoCredentialLock = () => new AppError(403, 'Credential changes are disabled in the public demo.')
+  const rejectDemoSettingsCredentials = (input) => {
+    if (demo && (input.password || input.familyPassword || input.clearFamilyPassword === true)) throw demoCredentialLock()
+  }
+  const rejectDemoUserCredentials = (input) => {
+    if (demo && (input.pin || input.clearPin === true)) throw demoCredentialLock()
+  }
+
   const requireAdmin = (request, _response, next) => {
     if (!hasValidSession(request.headers.cookie, adminCookieNames, service.settings.sessionSecret, 'admin')) return next(new AppError(401, 'Admin sign-in required.'))
     next()
@@ -116,6 +124,7 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
     response.json({ authenticated: true })
   }))
   router.post('/admin/recovery/request', recoveryRequestLimiter, (request, response, next) => {
+    if (demo) return next(demoCredentialLock())
     if (!service.settings.isSetup) return next(new AppError(409, 'Complete setup before recovering an admin password.'))
     const code = createRecoveryCode()
     const expiresAt = Date.now() + recoveryLifetimeMs
@@ -133,6 +142,7 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
     response.status(202).json({ requested: true, expiresInSeconds: recoveryLifetimeMs / 1000 })
   })
   router.post('/admin/recovery/reset', loginLimiter, asyncRoute(async (request, response) => {
+    if (demo) throw demoCredentialLock()
     const input = z.object({
       code: z.string().trim().min(1).max(100),
       password: z.string().min(8).max(200),
@@ -153,12 +163,28 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
   })
   router.get('/admin/me', requireAdmin, (_request, response) => response.json({ authenticated: true }))
   router.get('/admin/state', requireAdmin, asyncRoute(async (_request, response) => response.json(await service.getAdminState())))
-  router.patch('/admin/settings', requireAdmin, changed(async (request) => service.updateSettings(settingsSchema.parse(request.body))))
-  router.put('/admin/users', requireAdmin, changed(async (request) => service.saveUsers(usersSchema.parse(request.body))))
+  router.patch('/admin/settings', requireAdmin, changed(async (request) => {
+    const input = settingsSchema.parse(request.body)
+    rejectDemoSettingsCredentials(input)
+    return service.updateSettings(input)
+  }))
+  router.put('/admin/users', requireAdmin, changed(async (request) => {
+    const input = usersSchema.parse(request.body)
+    input.forEach(rejectDemoUserCredentials)
+    return service.saveUsers(input)
+  }))
   router.put('/admin/items', requireAdmin, changed(async (request) => service.saveItems(itemsSchema.parse(request.body))))
   router.put('/admin/chores', requireAdmin, changed(async (request) => service.saveChores(choresSchema.parse(request.body))))
-  router.post('/admin/users', requireAdmin, changed(async (request) => service.createUser(userSchema.parse(request.body))))
-  router.patch('/admin/users/:userId', requireAdmin, changed(async (request) => service.updateUser(id.parse(request.params.userId), userPatchSchema.parse(request.body))))
+  router.post('/admin/users', requireAdmin, changed(async (request) => {
+    const input = userSchema.parse(request.body)
+    rejectDemoUserCredentials(input)
+    return service.createUser(input)
+  }))
+  router.patch('/admin/users/:userId', requireAdmin, changed(async (request) => {
+    const input = userPatchSchema.parse(request.body)
+    rejectDemoUserCredentials(input)
+    return service.updateUser(id.parse(request.params.userId), input)
+  }))
   router.delete('/admin/users/:userId', requireAdmin, changed(async (request) => service.deleteUser(id.parse(request.params.userId))))
   router.post('/admin/items', requireAdmin, changed(async (request) => service.createItem(itemSchema.parse(request.body))))
   router.patch('/admin/items/:itemId', requireAdmin, changed(async (request) => service.updateItem(id.parse(request.params.itemId), itemPatchSchema.parse(request.body))))
@@ -184,7 +210,10 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
     response.setHeader('Content-Disposition', `attachment; filename="routioneer-backup-${new Date().toISOString().slice(0, 10)}.json"`)
     response.json(service.exportData())
   })
-  router.post('/admin/import', requireAdmin, changed(async (request) => service.importData(request.body)))
+  router.post('/admin/import', requireAdmin, changed(async (request) => {
+    if (demo) throw demoCredentialLock()
+    return service.importData(request.body)
+  }))
 
   router.post('/users/:userId/unlock', requireFamily, loginLimiter, asyncRoute(async (request, response) => {
     const pin = z.object({ pin: z.string().max(20).default('') }).parse(request.body).pin

@@ -10,6 +10,7 @@ This branch is the public, disposable Routioneer demo. It is intentionally separ
 - Admin and user sessions are invalidated at reset time.
 - The Family Space has no password or user PINs, so visitors can try it immediately.
 - The demo admin password is `demo-admin` and is displayed in the demo banner.
+- Credential changes are blocked, including admin and Family Space passwords, user PINs, password recovery, and backup restore.
 
 Do not place real data or real credentials in this deployment. Visitors have admin access until the next reset.
 
