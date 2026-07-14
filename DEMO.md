@@ -1,6 +1,6 @@
-# ExpressACC demo deployment
+# Routioneer demo deployment
 
-This branch is the public, disposable ExpressACC demo. It is intentionally separate from `main` so it can be deployed at its own URL without changing the production/self-hosted application.
+This branch is the public, disposable Routioneer demo. It is intentionally separate from `main` so it can be deployed at its own URL without changing the production/self-hosted application.
 
 ## Demo behavior
 
@@ -17,9 +17,9 @@ Do not place real data or real credentials in this deployment. Visitors have adm
 
 The Compose configuration on this branch is isolated from the normal deployment:
 
-- image: `expressacc:demo`
+- image: `routioneer:demo`
 - host port: `3002` by default
-- data volume: `express-acc-demo-data`
+- data volume: `routioneer-demo-data`
 - demo mode: always enabled
 
 Start it with:

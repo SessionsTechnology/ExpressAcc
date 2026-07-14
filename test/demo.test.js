@@ -15,7 +15,7 @@ test('demo reset boundaries align to the configured interval', () => {
 })
 
 test('demo mode seeds a usable walkthrough and restores it on schedule', async (t) => {
-  const directory = await mkdtemp(join(tmpdir(), 'expressacc-demo-'))
+  const directory = await mkdtemp(join(tmpdir(), 'routioneer-demo-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
   const database = await createDatabase(join(directory, 'db.json'))
   let clock = Date.UTC(2026, 6, 14, 12, 7, 0)
@@ -36,7 +36,7 @@ test('demo mode seeds a usable walkthrough and restores it on schedule', async (
   t.after(() => controller.close())
   const service = createService(database)
 
-  assert.equal(service.status().applicationName, 'ExpressACC Demo')
+  assert.equal(service.status().applicationName, 'Routioneer Demo')
   assert.equal(await service.verifyAdmin('test-demo-password'), true)
   const seeded = await service.getAdminState()
   assert.deepEqual(seeded.users.map((user) => user.name), ['Alex', 'Jordan', 'Riley'])
@@ -59,13 +59,13 @@ test('demo mode seeds a usable walkthrough and restores it on schedule', async (
   await scheduled.callback()
 
   assert.equal(resetNotifications, 1)
-  assert.equal(service.status().applicationName, 'ExpressACC Demo')
+  assert.equal(service.status().applicationName, 'Routioneer Demo')
   assert.deepEqual((await service.getAdminState()).users.map((user) => user.name), ['Alex', 'Jordan', 'Riley'])
   assert.equal(controller.status().nextResetAt, '2026-07-14T12:30:00.000Z')
 })
 
 test('demo configuration rejects unsafe passwords and reset intervals', async (t) => {
-  const directory = await mkdtemp(join(tmpdir(), 'expressacc-demo-config-'))
+  const directory = await mkdtemp(join(tmpdir(), 'routioneer-demo-config-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
   const database = await createDatabase(join(directory, 'db.json'))
 

@@ -44,7 +44,7 @@ export async function createDemoData({
   data.settings = {
     ...data.settings,
     isSetup: true,
-    applicationName: 'ExpressACC Demo',
+    applicationName: 'Routioneer Demo',
     passwordHash: await hashSecret(adminPassword),
     timeZone,
     kioskMessage: `Explore freely—this demo restores its sample data every ${resetMinutes} minutes.`,
@@ -224,7 +224,7 @@ export async function createDemoController({
         await reset()
         resetSucceeded = true
       } catch (error) {
-        console.error('Unable to reset ExpressACC demo data', error)
+        console.error('Unable to reset Routioneer demo data', error)
       } finally {
         scheduleNext()
       }
