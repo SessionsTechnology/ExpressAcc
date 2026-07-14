@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
+import { io as createSocketClient } from 'socket.io-client'
 import { createApplication } from '../index.js'
 
 test('HTTP setup and admin authentication protect private state', async (t) => {
@@ -179,4 +180,91 @@ test('HTTP setup and admin authentication protect private state', async (t) => {
     body: JSON.stringify({ code: recoveryCode, password: 'another-password-123' }),
   })
   assert.equal(reusedRecovery.status, 401)
+})
+
+test('Family Space uses a separate remembered session and invalidates it when the password changes', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'expressacc-family-api-'))
+  const publicPath = join(directory, 'dist')
+  await mkdir(publicPath, { recursive: true })
+  await writeFile(join(publicPath, 'index.html'), '<!doctype html><title>ExpressACC test</title>')
+  const application = await createApplication({ databaseFile: join(directory, 'db.json'), publicPath })
+  await new Promise((resolve) => application.server.listen(0, '127.0.0.1', resolve))
+  const address = application.server.address()
+  const origin = `http://127.0.0.1:${address.port}`
+  const base = `${origin}/api`
+  t.after(async () => {
+    await application.close()
+    await rm(directory, { recursive: true, force: true })
+  })
+
+  let response = await fetch(`${base}/setup`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ applicationName: 'Protected Family', password: 'admin-password', timeZone: 'UTC' }),
+  })
+  assert.equal(response.status, 200)
+  response = await fetch(`${base}/admin/login`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'admin-password' }),
+  })
+  const adminCookie = response.headers.get('set-cookie').split(';')[0]
+
+  response = await fetch(`${base}/admin/settings`, {
+    method: 'PATCH', headers: { cookie: adminCookie, 'content-type': 'application/json' },
+    body: JSON.stringify({ familyPassword: 'family-password' }),
+  })
+  assert.equal(response.status, 200)
+  assert.equal((await response.json()).familySpaceProtected, true)
+  assert.equal((await (await fetch(`${base}/status`)).json()).familySpaceProtected, true)
+
+  assert.equal((await fetch(`${base}/state`)).status, 401)
+  assert.equal((await fetch(`${base}/state`, { headers: { cookie: adminCookie } })).status, 401)
+  response = await fetch(`${base}/family/login`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'admin-password' }),
+  })
+  assert.equal(response.status, 401)
+  response = await fetch(`${base}/family/login`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'family-password' }),
+  })
+  assert.equal(response.status, 200)
+  const setCookie = response.headers.get('set-cookie')
+  assert.match(setCookie, /expressacc_family=/)
+  assert.match(setCookie, /HttpOnly/i)
+  assert.match(setCookie, /SameSite=Strict/i)
+  assert.match(setCookie, /Max-Age=2592000/i)
+  const familyCookie = setCookie.split(';')[0]
+  assert.equal((await fetch(`${base}/family/me`, { headers: { cookie: familyCookie } })).status, 200)
+  assert.equal((await fetch(`${base}/state`, { headers: { cookie: familyCookie } })).status, 200)
+
+  const familySocket = createSocketClient(origin, { transports: ['websocket'], extraHeaders: { cookie: familyCookie } })
+  t.after(() => familySocket.close())
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Timed out waiting for protected checkout data.')), 3000)
+    familySocket.once('checkout:update', () => { clearTimeout(timeout); resolve() })
+    familySocket.once('connect_error', reject)
+  })
+  const familyLocked = new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Timed out waiting for the expired Family Space session to lock.')), 3000)
+    familySocket.once('family:locked', () => { clearTimeout(timeout); resolve() })
+  })
+
+  response = await fetch(`${base}/admin/settings`, {
+    method: 'PATCH', headers: { cookie: adminCookie, 'content-type': 'application/json' },
+    body: JSON.stringify({ familyPassword: 'new-family-password' }),
+  })
+  assert.equal(response.status, 200)
+  await familyLocked
+  assert.equal((await fetch(`${base}/state`, { headers: { cookie: familyCookie } })).status, 401)
+
+  response = await fetch(`${base}/family/login`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'new-family-password' }),
+  })
+  const newFamilyCookie = response.headers.get('set-cookie').split(';')[0]
+  assert.equal((await fetch(`${base}/state`, { headers: { cookie: newFamilyCookie } })).status, 200)
+
+  response = await fetch(`${base}/admin/settings`, {
+    method: 'PATCH', headers: { cookie: adminCookie, 'content-type': 'application/json' },
+    body: JSON.stringify({ clearFamilyPassword: true }),
+  })
+  assert.equal(response.status, 200)
+  assert.equal((await response.json()).familySpaceProtected, false)
+  assert.equal((await fetch(`${base}/state`)).status, 200)
 })

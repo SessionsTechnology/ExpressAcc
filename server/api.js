@@ -17,6 +17,8 @@ const settingsSchema = nonEmptyPatch(z.object({
   password: z.string().max(200).optional(),
   timeZone,
   darkMode: z.boolean(),
+  familyPassword: z.string().max(200).refine((value) => !value || value.length >= 8, 'Use at least 8 characters for the Family Space password.').optional(),
+  clearFamilyPassword: z.boolean().optional(),
   kioskMessage: z.string().max(500),
   kioskTimeoutSeconds: z.coerce.number().int().min(5).max(3600),
   dailyTimeMinutes: dailyTime,
@@ -51,6 +53,15 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
     if (!verifyToken(token, service.settings.sessionSecret, 'admin')) return next(new AppError(401, 'Admin sign-in required.'))
     next()
   }
+  const hasFamilySession = (request) => {
+    if (!service.isFamilySpaceProtected()) return true
+    const token = readCookie(request.headers.cookie, 'expressacc_family')
+    return Boolean(verifyToken(token, service.settings.familySessionSecret, 'family'))
+  }
+  const requireFamily = (request, _response, next) => {
+    if (!hasFamilySession(request)) return next(new AppError(401, 'Family Space sign-in required.'))
+    next()
+  }
   const requireUser = (request, _response, next) => {
     const payload = verifyToken(getBearer(request), service.settings.sessionSecret, 'user')
     if (!payload || payload.userId !== request.params.userId) return next(new AppError(401, 'Please enter the user PIN again.'))
@@ -65,7 +76,25 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
   router.get('/health', (_request, response) => response.json({ ok: true }))
   router.get('/status', (_request, response) => response.json(service.status()))
   router.post('/setup', loginLimiter, changed(async (request) => service.setup(setupSchema.parse(request.body))))
-  router.get('/state', asyncRoute(async (_request, response) => response.json(await service.getPublicState())))
+  router.get('/state', requireFamily, asyncRoute(async (_request, response) => response.json(await service.getPublicState())))
+
+  router.get('/family/me', (request, response) => {
+    if (!hasFamilySession(request)) throw new AppError(401, 'Family Space sign-in required.')
+    response.json({ authenticated: true, protected: service.isFamilySpaceProtected() })
+  })
+  router.post('/family/login', loginLimiter, asyncRoute(async (request, response) => {
+    const password = z.object({ password: z.string().min(1).max(200) }).parse(request.body).password
+    if (!service.isFamilySpaceProtected()) return response.json({ authenticated: true, protected: false })
+    if (!(await service.verifyFamilyPassword(password))) throw new AppError(401, 'Incorrect Family Space password.')
+    const token = createToken({ scope: 'family' }, service.settings.familySessionSecret, 30 * 24 * 60 * 60)
+    const secure = request.secure || process.env.COOKIE_SECURE === 'true'
+    response.setHeader('Set-Cookie', `expressacc_family=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${secure ? '; Secure' : ''}`)
+    response.json({ authenticated: true, protected: true })
+  }))
+  router.post('/family/logout', (_request, response) => {
+    response.setHeader('Set-Cookie', 'expressacc_family=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0')
+    response.json({ authenticated: false })
+  })
 
   router.post('/admin/login', loginLimiter, asyncRoute(async (request, response) => {
     const password = z.object({ password: z.string().min(1).max(200) }).parse(request.body).password
@@ -146,19 +175,19 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
   })
   router.post('/admin/import', requireAdmin, changed(async (request) => service.importData(request.body)))
 
-  router.post('/users/:userId/unlock', loginLimiter, asyncRoute(async (request, response) => {
+  router.post('/users/:userId/unlock', requireFamily, loginLimiter, asyncRoute(async (request, response) => {
     const pin = z.object({ pin: z.string().max(20).default('') }).parse(request.body).pin
     const user = await service.unlockUser(request.params.userId, pin)
     response.json({ token: createToken({ scope: 'user', userId: user.id }, service.settings.sessionSecret, 15 * 60) })
   }))
-  router.get('/users/:userId', requireUser, asyncRoute(async (request, response) => response.json(await service.getUserState(request.params.userId))))
-  router.post('/users/:userId/checkout', requireUser, changed(async (request) => {
+  router.get('/users/:userId', requireFamily, requireUser, asyncRoute(async (request, response) => response.json(await service.getUserState(request.params.userId))))
+  router.post('/users/:userId/checkout', requireFamily, requireUser, changed(async (request) => {
     const itemId = z.object({ itemId: id }).parse(request.body).itemId
     return service.checkout(request.params.userId, itemId)
   }))
-  router.post('/users/:userId/checkin', requireUser, changed(async (request) => service.checkin(request.params.userId)))
-  router.post('/users/:userId/chores/:choreId/complete', requireUser, changed(async (request) => service.completeChore(request.params.userId, request.params.choreId)))
-  router.delete('/users/:userId/chores/:choreId/complete', requireUser, changed(async (request) => service.undoChoreSubmission(request.params.userId, request.params.choreId)))
+  router.post('/users/:userId/checkin', requireFamily, requireUser, changed(async (request) => service.checkin(request.params.userId)))
+  router.post('/users/:userId/chores/:choreId/complete', requireFamily, requireUser, changed(async (request) => service.completeChore(request.params.userId, request.params.choreId)))
+  router.delete('/users/:userId/chores/:choreId/complete', requireFamily, requireUser, changed(async (request) => service.undoChoreSubmission(request.params.userId, request.params.choreId)))
 
   router.use((_request, _response, next) => next(new AppError(404, 'API endpoint not found.')))
   router.use((error, _request, response, _next) => {

@@ -69,9 +69,35 @@ test('public and admin state never disclose credential hashes', async (t) => {
   assert.equal(JSON.stringify(publicState).includes('pinHash'), false)
   assert.equal(JSON.stringify(adminState).includes('pinHash'), false)
   assert.equal(JSON.stringify(adminState).includes('passwordHash'), false)
+  assert.equal(JSON.stringify(adminState).includes('familyPasswordHash'), false)
   assert.equal(JSON.stringify(service.exportData()).includes('passwordHash'), false)
   assert.equal(JSON.stringify(service.exportData()).includes('sessionSecret'), false)
+  assert.equal(JSON.stringify(service.exportData()).includes('familyPasswordHash'), false)
+  assert.equal(JSON.stringify(service.exportData()).includes('familySessionSecret'), false)
   assert.equal(await service.verifyAdmin('password123'), true)
+})
+
+test('Family Space credentials are separate from admin credentials and rotate their own sessions', async (t) => {
+  const { database, service } = await fixture(t)
+  const adminSessionSecret = database.read().settings.sessionSecret
+  const firstFamilySessionSecret = database.read().settings.familySessionSecret
+  assert.equal(service.status().familySpaceProtected, false)
+
+  await service.updateSettings({ familyPassword: 'family-password' })
+  assert.equal(service.status().familySpaceProtected, true)
+  assert.equal(await service.verifyFamilyPassword('family-password'), true)
+  assert.equal(await service.verifyFamilyPassword('password123'), false)
+  assert.notEqual(database.read().settings.familySessionSecret, firstFamilySessionSecret)
+  assert.equal(database.read().settings.sessionSecret, adminSessionSecret)
+
+  const protectedState = await service.getAdminState()
+  assert.equal(protectedState.settings.familySpaceProtected, true)
+  assert.equal('familyPasswordHash' in protectedState.settings, false)
+  const secondFamilySessionSecret = database.read().settings.familySessionSecret
+  await service.updateSettings({ clearFamilyPassword: true })
+  assert.equal(service.status().familySpaceProtected, false)
+  assert.notEqual(database.read().settings.familySessionSecret, secondFamilySessionSecret)
+  assert.equal(database.read().settings.sessionSecret, adminSessionSecret)
 })
 
 test('kiosk settings default safely and are exposed to the appropriate screens', async (t) => {

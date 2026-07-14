@@ -123,6 +123,7 @@ function sanitizedSettings(settings) {
     applicationName: settings.applicationName,
     timeZone: settings.timeZone,
     darkMode: settings.darkMode,
+    familySpaceProtected: Boolean(settings.familyPasswordHash),
     kioskMessage: settings.kioskMessage,
     kioskTimeoutSeconds: settings.kioskTimeoutSeconds,
     dailyTimeMinutes: settings.dailyTimeMinutes,
@@ -190,6 +191,7 @@ export function createService(database) {
         applicationName: settings.applicationName,
         timeZone: settings.timeZone,
         darkMode: settings.darkMode,
+        familySpaceProtected: Boolean(settings.familyPasswordHash),
         kioskTimeoutSeconds: settings.kioskTimeoutSeconds,
       }
     },
@@ -206,6 +208,14 @@ export function createService(database) {
 
     verifyAdmin(password) {
       return verifySecret(password, state().settings.passwordHash)
+    },
+
+    isFamilySpaceProtected() {
+      return Boolean(state().settings.familyPasswordHash)
+    },
+
+    verifyFamilyPassword(password) {
+      return verifySecret(password, state().settings.familyPasswordHash)
     },
 
     async resetAdminPassword(password) {
@@ -241,7 +251,9 @@ export function createService(database) {
 
     async updateSettings(input) {
       let passwordHash
+      let familyPasswordHash
       if (input.password) passwordHash = await hashSecret(input.password)
+      if (input.familyPassword) familyPasswordHash = await hashSecret(input.familyPassword)
       return database.transaction((data) => {
         if (input.applicationName !== undefined) data.settings.applicationName = input.applicationName
         if (input.timeZone !== undefined) data.settings.timeZone = input.timeZone
@@ -252,6 +264,13 @@ export function createService(database) {
           data.settings.dailyTimeMinutes = Object.fromEntries(weekdays.map((day) => [day, Number(input.dailyTimeMinutes[day] || 0)]))
         }
         if (passwordHash) data.settings.passwordHash = passwordHash
+        if (input.clearFamilyPassword) {
+          data.settings.familyPasswordHash = ''
+          data.settings.familySessionSecret = randomBytes(32).toString('base64url')
+        } else if (familyPasswordHash) {
+          data.settings.familyPasswordHash = familyPasswordHash
+          data.settings.familySessionSecret = randomBytes(32).toString('base64url')
+        }
         log(data, 'settings', 'Application settings updated')
         return sanitizedSettings(data.settings)
       })
@@ -697,6 +716,8 @@ export function createService(database) {
       const exported = structuredClone(state())
       delete exported.settings.passwordHash
       delete exported.settings.sessionSecret
+      delete exported.settings.familyPasswordHash
+      delete exported.settings.familySessionSecret
       return exported
     },
 
@@ -704,10 +725,14 @@ export function createService(database) {
       validateBackup(input)
       const currentHash = state().settings.passwordHash
       const currentSecret = state().settings.sessionSecret
+      const currentFamilyHash = state().settings.familyPasswordHash
+      const currentFamilySecret = state().settings.familySessionSecret
       await database.backup()
       const replacement = await database.replace(input)
       replacement.settings.passwordHash = currentHash
       replacement.settings.sessionSecret = currentSecret
+      replacement.settings.familyPasswordHash = currentFamilyHash
+      replacement.settings.familySessionSecret = currentFamilySecret
       replacement.meta.version = 2
       await database.transaction((data) => log(data, 'import', 'Database restored from backup'))
       return this.getAdminState()

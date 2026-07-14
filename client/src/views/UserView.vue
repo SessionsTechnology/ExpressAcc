@@ -144,7 +144,27 @@ const choreButtonLabel = (chore) => {
 async function load() {
   if (!token.value) return
   try { Object.assign(state, await userApi(userId, token.value)) }
-  catch (exception) { if (exception.status === 401) token.value = ''; else error.value = exception.message }
+  catch (exception) {
+    if (exception.status === 401) {
+      if (await redirectIfFamilySessionExpired()) return
+      token.value = ''
+    } else error.value = exception.message
+  }
+}
+function clearProtectedState() {
+  token.value = ''
+  Object.assign(state, { user:null, availableItems:[], chores:[], checkoutBlocked:false })
+}
+async function redirectIfFamilySessionExpired() {
+  try {
+    await api('/family/me')
+    return false
+  } catch (exception) {
+    if (exception.status !== 401) return false
+    clearProtectedState()
+    await router.replace({ name:'family-login', query:{ redirect:route.fullPath } })
+    return true
+  }
 }
 async function prepareAccess() {
   try {
@@ -155,7 +175,9 @@ async function prepareAccess() {
       if (!publicUser) throw new Error('User not found.')
       if (!publicUser.hasPin) await unlock()
     }
-  } catch (exception) { error.value = exception.message }
+  } catch (exception) {
+    if (exception.status !== 401 || !(await redirectIfFamilySessionExpired())) error.value = exception.message
+  }
   finally { accessReady.value = true }
 }
 const timeoutMilliseconds = () => Math.max(5, Number(idleTimeoutSeconds.value) || 30) * 1000
@@ -178,8 +200,23 @@ async function refreshIdleSettings() {
     scheduleIdleTimeout()
   } catch (exception) { error.value = exception.message }
 }
-async function unlock() { loading.value = true; error.value = ''; try { const result = await api(`/users/${userId}/unlock`, { method: 'POST', body: { pin: pin.value } }); token.value = result.token; await load() } catch (exception) { error.value = exception.message } finally { loading.value = false } }
-async function act(path, body, success, method = 'POST') { loading.value = true; error.value = ''; try { await userApi(userId, token.value, path, { method, body }); message.value = success; selectedItem.value = ''; await load() } catch (exception) { error.value = exception.message } finally { loading.value = false } }
+async function unlock() { loading.value = true; error.value = ''; try { const result = await api(`/users/${userId}/unlock`, { method: 'POST', body: { pin: pin.value } }); token.value = result.token; await load() } catch (exception) { if (exception.status !== 401 || !(await redirectIfFamilySessionExpired())) error.value = exception.message } finally { loading.value = false } }
+async function act(path, body, success, method = 'POST') {
+  loading.value = true
+  error.value = ''
+  try {
+    await userApi(userId, token.value, path, { method, body })
+    message.value = success
+    selectedItem.value = ''
+    await load()
+  } catch (exception) {
+    if (exception.status === 401) {
+      if (await redirectIfFamilySessionExpired()) return
+      token.value = ''
+    }
+    error.value = exception.message
+  } finally { loading.value = false }
+}
 const checkout = () => act('/checkout', { itemId: selectedItem.value }, 'Item checked out.')
 const checkin = () => act('/checkin', {}, 'Item checked in. Thank you!')
 const completeChore = (chore) => act(`/chores/${chore.id}/complete`, {}, `“${chore.title}” was sent for approval.`)

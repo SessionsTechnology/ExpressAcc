@@ -8,7 +8,8 @@ Users can check shared items in and out, see their remaining timed-device allowa
 
 - Restart-safe timed checkouts based on persisted timestamps
 - Per-day time allowances in a configurable time zone
-- PIN-protected user access and password-protected admin access
+- Optional Family Space password with a remembered 30-day device session, strongly recommended for public-internet deployments
+- PIN-protected user access and separately password-protected admin access
 - Real-time checkout and countdown updates across connected screens
 - Item availability enforcement (one item cannot be checked out twice)
 - Per-user item assignments and chore-only profiles without checkout timers
@@ -87,7 +88,7 @@ Enter the code and a new password on the sign-in screen within 10 minutes. Recov
 
 ## Security notes
 
-ExpressACC is designed for a trusted self-hosted network. Admin sessions use an HTTP-only, same-site cookie. User sessions are short-lived and scoped to one user. Login attempts are rate-limited, inputs are validated on the server, and public real-time events never contain PIN or password data.
+ExpressACC is designed for self-hosting. Family Space can optionally be protected from **Admin → Settings → General** with a password that is separate from the admin password. Protection is strongly recommended before exposing ExpressACC to the public internet, but can remain off when the app is only reachable on a trusted private network behind a firewall. Its HTTP-only, same-site session is remembered for 30 days on each signed-in device and is invalidated immediately when the Family Space password changes. Admin sessions also use an HTTP-only, same-site cookie. User sessions are short-lived and scoped to one user. Login attempts are rate-limited, inputs are validated on the server, and household real-time data is only sent to authorized Family Space or admin sessions when protection is enabled.
 
 For access over the public internet, place ExpressACC behind a maintained HTTPS reverse proxy and follow normal network-hardening practices.
 

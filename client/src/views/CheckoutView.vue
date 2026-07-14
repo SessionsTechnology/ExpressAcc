@@ -7,7 +7,10 @@
       </div>
       <div class="kiosk-header-actions">
         <time class="kiosk-clock" :datetime="currentTime.toISOString()" :aria-label="`Current time: ${formattedCurrentTime}`">{{ formattedCurrentTime }}</time>
-        <v-btn to="/" variant="text" prepend-icon="mdi-arrow-left">Home</v-btn>
+        <div class="kiosk-navigation-actions">
+          <v-btn v-if="familySpaceProtected" variant="text" prepend-icon="mdi-lock-outline" @click="lockFamilySpace">Lock</v-btn>
+          <v-btn to="/" variant="text" prepend-icon="mdi-arrow-left">Home</v-btn>
+        </div>
       </div>
     </header>
 
@@ -81,13 +84,16 @@
 
 <script setup>
 import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { api } from '../lib/api.js'
 import { formatDuration } from '../lib/format.js'
 const socket = inject('socket')
+const router = useRouter()
 const users = ref([])
 const chores = ref([])
 const kioskMessage = ref('')
 const error = ref('')
+const familySpaceProtected = ref(false)
 const currentTime = ref(new Date())
 const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
 const formattedCurrentTime = computed(() => timeFormatter.format(currentTime.value))
@@ -101,9 +107,21 @@ const timeGreeting = computed(() => {
 let clockInterval
 const update = (state) => { users.value = state.users; chores.value = state.chores || []; kioskMessage.value = state.kioskMessage || '' }
 const recurrenceLabel = (recurrence) => ({ once: 'One-time chore', daily: 'Daily chore', weekly: 'Weekly chore' }[recurrence] || 'Chore')
+async function lockFamilySpace() {
+  await api('/family/logout', { method: 'POST' })
+  socket.disconnect().connect()
+  await router.replace({ name: 'family-login', query: { redirect: '/checkout' } })
+}
 onMounted(async () => {
   clockInterval = window.setInterval(() => { currentTime.value = new Date() }, 1000)
-  try { update(await api('/state')) } catch (exception) { error.value = exception.message }
+  try {
+    const [state, status] = await Promise.all([api('/state'), api('/status')])
+    update(state)
+    familySpaceProtected.value = Boolean(status.familySpaceProtected)
+  } catch (exception) {
+    if (exception.status === 401) return router.replace({ name: 'family-login', query: { redirect: '/checkout' } })
+    error.value = exception.message
+  }
   socket.on('checkout:update', update)
 })
 onBeforeUnmount(() => {
@@ -129,6 +147,12 @@ onBeforeUnmount(() => {
   letter-spacing: -.035em;
   line-height: 1;
   white-space: nowrap;
+}
+
+.kiosk-navigation-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .content-section-header,

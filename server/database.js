@@ -15,6 +15,8 @@ export function emptyDatabase() {
       applicationName: 'ExpressACC',
       passwordHash: '',
       sessionSecret: randomBytes(32).toString('base64url'),
+      familyPasswordHash: '',
+      familySessionSecret: randomBytes(32).toString('base64url'),
       timeZone: process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       darkMode: false,
       kioskMessage: '',
@@ -55,6 +57,8 @@ async function migrate(data) {
         darkMode: data.settings?.darkMode === true,
         dailyTimeMinutes: { ...defaults.settings.dailyTimeMinutes, ...data.settings?.dailyTimeMinutes },
         sessionSecret: data.settings?.sessionSecret || defaults.settings.sessionSecret,
+        familyPasswordHash: data.settings?.familyPasswordHash || '',
+        familySessionSecret: data.settings?.familySessionSecret || defaults.settings.familySessionSecret,
       },
       users: Array.isArray(data.users) ? data.users.map((user) => ({
         ...user,

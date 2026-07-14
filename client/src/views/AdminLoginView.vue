@@ -37,10 +37,11 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { inject, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../lib/api.js'
 const router = useRouter()
+const socket = inject('socket')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
@@ -50,7 +51,7 @@ const recoveryRequested = ref(false)
 const recovery = reactive({ code: '', password: '', confirmPassword: '' })
 async function login() {
   loading.value = true; error.value = ''; success.value = ''
-  try { await api('/admin/login', { method: 'POST', body: { password: password.value } }); await router.replace('/admin') }
+  try { await api('/admin/login', { method: 'POST', body: { password: password.value } }); socket.disconnect().connect(); await router.replace('/admin') }
   catch (exception) { error.value = exception.message }
   finally { loading.value = false }
 }

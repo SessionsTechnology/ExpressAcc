@@ -70,17 +70,30 @@ async function bootstrap() {
 
 const onConnect = () => { connected.value = true }
 const onDisconnect = () => { connected.value = false }
-const onChanged = async () => applyStatus(await api('/status'))
+const onChanged = async () => {
+  applyStatus(await api('/status'))
+  if (route.meta.familySpace && status.familySpaceProtected) {
+    try { await api('/family/me') }
+    catch (exception) {
+      if (exception.status === 401) await router.replace({ name: 'family-login', query: { redirect: route.fullPath } })
+    }
+  }
+}
+const onFamilyLocked = () => {
+  if (route.meta.familySpace) void router.replace({ name: 'family-login', query: { redirect: route.fullPath } })
+}
 
 onMounted(() => {
   bootstrap()
   socket.on('connect', onConnect)
   socket.on('disconnect', onDisconnect)
   socket.on('state:changed', onChanged)
+  socket.on('family:locked', onFamilyLocked)
 })
 onBeforeUnmount(() => {
   socket.off('connect', onConnect)
   socket.off('disconnect', onDisconnect)
   socket.off('state:changed', onChanged)
+  socket.off('family:locked', onFamilyLocked)
 })
 </script>

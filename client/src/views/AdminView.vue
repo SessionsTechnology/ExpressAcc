@@ -13,6 +13,10 @@
     </div>
     <v-alert v-if="notice" type="success" variant="tonal" closable class="mb-6" @click:close="notice = ''">{{ notice }}</v-alert>
     <v-alert v-if="error" type="error" variant="tonal" closable class="mb-6" @click:close="error = ''">{{ error }}</v-alert>
+    <v-alert v-if="!familySpaceProtected" type="warning" variant="tonal" class="mb-6" title="Family Space is not password protected">
+      This is fine on a trusted private network. Before making ExpressACC available on the public internet, add a separate Family Space password in Settings.
+      <template #append><v-btn to="/settings" color="warning" variant="tonal">Review access</v-btn></template>
+    </v-alert>
 
     <v-row class="metric-grid mb-7">
       <v-col cols="6" md="3">
@@ -131,14 +135,14 @@ import { useRouter } from 'vue-router'
 import { api } from '../lib/api.js'
 import { formatDate, formatDuration } from '../lib/format.js'
 const router = useRouter(); const socket = inject('socket')
-const ready = ref(false); const saving = ref(false); const error = ref(''); const notice = ref(''); const users = ref([]); const items = ref([]); const completions = ref([]); const activity = ref([])
+const ready = ref(false); const saving = ref(false); const error = ref(''); const notice = ref(''); const familySpaceProtected = ref(false); const users = ref([]); const items = ref([]); const completions = ref([]); const activity = ref([])
 const timeDialog = ref(false); const selectedUser = ref(null); const timeHours = ref(0); const timeMinutes = ref(0); const dialogError = ref('')
 const resetDialog = ref(false); const resetTarget = ref(null)
 const activeUsers = computed(() => users.value.filter((user) => !user.disabled))
 const pending = computed(() => completions.value.filter((completion) => completion.status === 'pending'))
 const approved = computed(() => completions.value.filter((completion) => completion.status === 'approved').slice(0, 5))
 const availableItemCount = computed(() => Math.max(0, items.value.filter((item) => !item.disabled).length - users.value.filter((user) => user.checkout).length))
-async function load() { try { const state = await api('/admin/state'); users.value = state.users; items.value = state.items; completions.value = state.completions; activity.value = state.activity } catch (exception) { if (exception.status === 401) return router.replace('/admin/login'); error.value = exception.message } finally { ready.value = true } }
+async function load() { try { const state = await api('/admin/state'); familySpaceProtected.value = Boolean(state.settings.familySpaceProtected); users.value = state.users; items.value = state.items; completions.value = state.completions; activity.value = state.activity } catch (exception) { if (exception.status === 401) return router.replace('/admin/login'); error.value = exception.message } finally { ready.value = true } }
 async function adjust(user, deltaSeconds) { try { await api(`/admin/users/${user.id}/time`, { method: 'POST', body: { deltaSeconds } }); await load() } catch (exception) { error.value = exception.message } }
 async function review(completion, status) { try { await api(`/admin/completions/${completion.id}/review`, { method: 'POST', body: { status } }); await load() } catch (exception) { error.value = exception.message } }
 function openTimeDialog(user) { selectedUser.value = user; timeHours.value = Math.floor(user.timeRemainingSeconds / 3600); timeMinutes.value = Math.floor((user.timeRemainingSeconds % 3600) / 60); dialogError.value = ''; timeDialog.value = true }
@@ -151,7 +155,7 @@ async function setTime() {
 async function resetTime(user) { try { await api(`/admin/users/${user.id}/time/reset`, { method: 'POST' }); notice.value = `${user.name}’s time was reset to today’s default.`; await load() } catch (exception) { error.value = exception.message } }
 function openResetDialog(completion) { resetTarget.value = completion; resetDialog.value = true }
 async function resetCompletion() { saving.value = true; try { await api(`/admin/completions/${resetTarget.value.id}/reset`, { method: 'POST' }); notice.value = `${resetTarget.value.choreTitle} was reset for ${resetTarget.value.userName}.`; resetDialog.value = false; await load() } catch (exception) { error.value = exception.message } finally { saving.value = false } }
-async function logout() { await api('/admin/logout', { method: 'POST' }); await router.replace('/') }
+async function logout() { await api('/admin/logout', { method: 'POST' }); socket.disconnect().connect(); await router.replace('/') }
 const onChanged = () => load()
 onMounted(() => { load(); socket.on('state:changed', onChanged); socket.on('checkout:update', ({ users: next }) => { users.value = next }) })
 onBeforeUnmount(() => { socket.off('state:changed', onChanged); socket.off('checkout:update') })

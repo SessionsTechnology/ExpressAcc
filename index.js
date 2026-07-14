@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import express from 'express'
 import helmet from 'helmet'
 import { Server } from 'socket.io'
+import { readCookie, verifyToken } from './server/auth.js'
 import { createApiRouter } from './server/api.js'
 import { createDatabase } from './server/database.js'
 import { createService } from './server/service.js'
@@ -42,6 +43,28 @@ export async function createApplication(options = {}) {
     recoveryLogger: options.recoveryLogger,
   }))
 
+  const hasSocketSession = (socket, cookieName, secret, scope) => {
+    const token = readCookie(socket.handshake.headers.cookie, cookieName)
+    return Boolean(verifyToken(token, secret, scope))
+  }
+  const canReceiveCheckoutState = (socket) => (
+    !service.isFamilySpaceProtected()
+    || hasSocketSession(socket, 'expressacc_family', service.settings.familySessionSecret, 'family')
+    || hasSocketSession(socket, 'expressacc_admin', service.settings.sessionSecret, 'admin')
+  )
+  const publishCheckoutState = async () => {
+    const sockets = [...io.sockets.sockets.values()]
+    const recipients = sockets.filter((socket) => {
+      const allowed = canReceiveCheckoutState(socket)
+      if (!allowed && socket.data.hadCheckoutAccess) socket.emit('family:locked')
+      socket.data.hadCheckoutAccess = allowed
+      return allowed
+    })
+    if (!recipients.length) return
+    const state = await service.getPublicState()
+    for (const socket of recipients) socket.emit('checkout:update', state)
+  }
+
   const publicPath = options.publicPath || join(__dirname, 'client', 'dist')
   app.use('/assets', express.static(join(publicPath, 'assets'), {
     immutable: true,
@@ -55,12 +78,13 @@ export async function createApplication(options = {}) {
   })
 
   io.on('connection', async (socket) => {
-    socket.emit('checkout:update', await service.getPublicState())
+    socket.data.hadCheckoutAccess = canReceiveCheckoutState(socket)
+    if (socket.data.hadCheckoutAccess) socket.emit('checkout:update', await service.getPublicState())
   })
 
   const ticker = setInterval(async () => {
     try {
-      io.emit('checkout:update', await service.getPublicState())
+      await publishCheckoutState()
     } catch (error) {
       console.error('Unable to publish checkout update', error)
     }

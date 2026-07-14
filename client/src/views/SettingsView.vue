@@ -12,7 +12,17 @@
       <v-window-item value="general">
         <v-card class="glass-card panel-card settings-panel pa-3 pa-sm-6"><v-card-text><h2 class="section-heading mb-5">Application</h2><v-text-field v-model="settings.applicationName" :disabled="saving" label="Application name" />
           <div class="appearance-setting mb-6"><v-avatar color="primary" variant="tonal" size="48"><v-icon :icon="settings.darkMode ? 'mdi-weather-night' : 'mdi-white-balance-sunny'" /></v-avatar><div class="appearance-setting-copy"><h3>Dark mode</h3><p class="muted">Use the darker color theme on every connected screen. This switch saves automatically.</p></div><v-switch :model-value="settings.darkMode" :disabled="saving || savingDarkMode || hasEntryOperations" :loading="savingDarkMode" color="primary" inset hide-details aria-label="Dark mode" @update:model-value="saveDarkMode" /></div>
-          <v-select v-model="settings.timeZone" :disabled="saving" :items="timeZones" label="Time zone" /><v-text-field v-model="settings.password" :disabled="saving" label="New admin password" type="password" hint="Leave blank to keep the current password" persistent-hint class="mb-6" />
+          <v-select v-model="settings.timeZone" :disabled="saving" :items="timeZones" label="Time zone" /><v-text-field v-model="settings.password" :disabled="saving" label="New admin password" type="password" autocomplete="new-password" hint="Leave blank to keep the current password" persistent-hint class="mb-7" />
+          <div class="family-access-setting mb-7">
+            <div class="family-access-heading">
+              <div><h2 class="section-heading mb-1">Family Space access</h2><p class="muted mb-0">Keep profiles, chores, and checkout information private with a password that is separate from the admin password.</p></div>
+              <v-chip :color="settings.familySpaceProtected ? 'success' : 'warning'" variant="tonal" :prepend-icon="settings.familySpaceProtected ? 'mdi-lock-check-outline' : 'mdi-lock-open-outline'">{{ settings.familySpaceProtected ? 'Protected' : 'Public' }}</v-chip>
+            </div>
+            <v-alert v-if="settings.familySpaceProtected" color="primary" variant="tonal" icon="mdi-cellphone-check" class="my-5">Signed-in devices stay unlocked for 30 days. Changing or removing this password signs them out immediately.</v-alert>
+            <v-alert v-else type="warning" variant="tonal" class="my-5"><strong>Recommended for internet access:</strong> set a Family Space password before exposing ExpressACC publicly. It is optional when the app is only reachable on a trusted private network behind your firewall.</v-alert>
+            <v-text-field v-model="settings.familyPassword" :disabled="saving || settings.clearFamilyPassword" :label="settings.familySpaceProtected ? 'New Family Space password' : 'Family Space password'" type="password" autocomplete="new-password" :hint="settings.familySpaceProtected ? 'Leave blank to keep the current Family Space password' : 'Use at least 8 characters to protect Family Space'" persistent-hint class="mt-5" />
+            <v-checkbox v-if="settings.familySpaceProtected" v-model="settings.clearFamilyPassword" :disabled="saving" color="warning" label="Remove Family Space protection and make it public" hide-details />
+          </div>
           <h2 class="section-heading mb-2">Kiosk</h2><p class="muted mb-5">Show a household-wide message and return inactive user profiles to the kiosk automatically.</p><v-textarea v-model="settings.kioskMessage" :disabled="saving" label="Kiosk message" hint="Leave blank to hide the message" persistent-hint maxlength="500" counter auto-grow rows="2" class="mb-4" /><v-text-field v-model.number="settings.kioskTimeoutSeconds" :disabled="saving" label="User profile inactivity timeout" type="number" min="5" max="3600" suffix="seconds" hint="Between 5 seconds and 1 hour" persistent-hint class="mb-7" />
           <h2 class="section-heading mb-2">Daily timed-device allowance</h2><p class="muted mb-5">Minutes reset at the start of each day in the selected time zone.</p><v-row><v-col v-for="day in weekdays" :key="day" cols="12" sm="6" md="4"><v-text-field v-model.number="settings.dailyTimeMinutes[day]" :disabled="saving" :label="day" type="number" min="0" max="1440" suffix="minutes" /></v-col></v-row>
         </v-card-text><v-card-actions class="settings-card-actions"><v-btn color="primary" size="large" :loading="saving" :disabled="savingDarkMode || hasEntryOperations" @click="saveSettings">Save general settings</v-btn></v-card-actions></v-card>
@@ -90,7 +100,7 @@ import { api } from '../lib/api.js'
 const router = useRouter(); const ready = ref(false); const saving = ref(false); const savingDarkMode = ref(false); const tab = ref('general'); const backupFile = ref(null); const openItem = ref(null); const openChore = ref(null)
 const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; const recurrences = [{title:'One time',value:'once'},{title:'Daily',value:'daily'},{title:'Weekly',value:'weekly'}]
 const guessedZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; const timeZones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [guessedZone, 'UTC']
-const settings = reactive({ applicationName:'', password:'', timeZone:guessedZone, darkMode:false, kioskMessage:'', kioskTimeoutSeconds:30, dailyTimeMinutes:Object.fromEntries(weekdays.map(day => [day,0])) }); const users = ref([]); const items = ref([]); const chores = ref([])
+const settings = reactive({ applicationName:'', password:'', familyPassword:'', clearFamilyPassword:false, familySpaceProtected:false, timeZone:guessedZone, darkMode:false, kioskMessage:'', kioskTimeoutSeconds:30, dailyTimeMinutes:Object.fromEntries(weekdays.map(day => [day,0])) }); const users = ref([]); const items = ref([]); const chores = ref([])
 const snackbars = ref([]); const entryOperations = reactive(new Map()); const deleteTarget = ref(null)
 const assignableUsers = computed(() => users.value.filter((user) => user.id && !user.disabled))
 const hasEntryOperations = computed(() => entryOperations.size > 0)
@@ -105,7 +115,7 @@ function showSnackbar(message, color = 'success') {
 }
 function entryOperation(entry) { return entryOperations.get(entry) || '' }
 function isEntryBusy(entry) { return saving.value || Boolean(entryOperation(entry)) }
-async function load() { try { const state = await api('/admin/state'); Object.assign(settings, state.settings, { password: '' }); users.value = state.users.map(user => ({ ...user, pin:'', clearPin:false })); items.value = state.items; chores.value = state.chores } catch (exception) { if (exception.status === 401) return router.replace('/admin/login'); showSnackbar(exception.message, 'error') } finally { ready.value = true } }
+async function load() { try { const state = await api('/admin/state'); Object.assign(settings, state.settings, { password:'', familyPassword:'', clearFamilyPassword:false }); users.value = state.users.map(user => ({ ...user, pin:'', clearPin:false })); items.value = state.items; chores.value = state.chores } catch (exception) { if (exception.status === 401) return router.replace('/admin/login'); showSnackbar(exception.message, 'error') } finally { ready.value = true } }
 function addUser() { users.value.unshift({ name:'', pin:'', disabled:false, checkoutEnabled:true, hasPin:false, clearPin:false }) }
 function addItem() { const item = { name:'', description:'', isTimed:true, disabled:false, assignedUserIds:[] }; items.value.unshift(item); openItem.value = accordionValue(item, 'item') }
 function addChore() { const chore = { title:'', description:'', rewardMinutes:15, recurrence:'daily', assignedUserIds:[], disabled:false }; chores.value.unshift(chore); openChore.value = accordionValue(chore, 'chore') }
@@ -192,7 +202,7 @@ async function saveDarkMode(value) {
 async function saveSettings() {
   if (savingDarkMode.value || hasEntryOperations.value) return
   saving.value = true
-  try { const saved = await api('/admin/settings', { method:'PATCH', body:settings }); Object.assign(settings, saved, { password:'' }); showSnackbar('General settings saved.') }
+  try { const saved = await api('/admin/settings', { method:'PATCH', body:settings }); Object.assign(settings, saved, { password:'', familyPassword:'', clearFamilyPassword:false }); showSnackbar('General settings saved.') }
   catch (exception) { showSnackbar(exception.message, 'error') }
   finally { saving.value = false }
 }
@@ -245,6 +255,30 @@ onMounted(load)
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: 16px;
+}
+
+.family-access-setting {
+  padding: 20px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.family-access-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.family-access-heading > div {
+  min-width: 0;
+}
+
+@media (max-width: 599px) {
+  .family-access-heading {
+    flex-direction: column;
+  }
 }
 
 .appearance-setting-copy {
