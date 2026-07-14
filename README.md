@@ -1,6 +1,6 @@
-# ExpressACC
+# Routioneer
 
-ExpressACC is a self-hosted shared-item checkout, screen-time, and chore manager for families, classrooms, churches, and other small communities.
+Routioneer is a self-hosted shared-item checkout, screen-time, and chore manager for families, classrooms, churches, and other small communities.
 
 Users can check shared items in and out, see their remaining timed-device allowance, and submit completed chores. Admins can monitor activity, adjust time, approve chore rewards, edit schedules, and back up or restore the installation.
 
@@ -57,7 +57,7 @@ By default, application data is written to `lowdb/db.json`. Override it with `DA
 docker compose up -d --build
 ```
 
-Open [http://localhost:3001](http://localhost:3001). Data is stored in the `express-acc-data` Docker volume.
+Open [http://localhost:3001](http://localhost:3001). Data is stored in the `routioneer-data` Docker volume.
 
 Optional environment overrides:
 
@@ -65,11 +65,11 @@ Optional environment overrides:
 TZ=America/New_York PORT=8080 docker compose up -d
 ```
 
-## Upgrading an older installation
+## Upgrading an older ExpressACC installation
 
 1. Back up the existing `lowdb/db.json` or Docker volume.
 2. Start the new version with the same data location.
-3. ExpressACC migrates the legacy schema on first launch and saves the original file as `db.json.bak`.
+3. Routioneer migrates the legacy schema and former default application name on first launch, then saves the original file as `db.json.bak`. Custom application names remain unchanged.
 4. Sign in with the existing admin password and review users, items, and daily allowances.
 
 Legacy plaintext passwords and PINs are converted to salted scrypt hashes during migration. They are never returned to the browser afterward.
@@ -81,16 +81,16 @@ Use **Admin → Settings → Data** to download a complete JSON backup. Restorin
 If the admin password is lost, choose **Forgot admin password?** on the admin sign-in screen and send a recovery code to the Docker logs. View it from the Docker host with:
 
 ```sh
-docker compose logs express-acc
+docker compose logs routioneer
 ```
 
 Enter the code and a new password on the sign-in screen within 10 minutes. Recovery codes can only be used once, are never sent to the browser, and a successful reset signs out existing admin sessions.
 
 ## Security notes
 
-ExpressACC is designed for self-hosting. Family Space can optionally be protected from **Admin → Settings → General** with a password that is separate from the admin password. Protection is strongly recommended before exposing ExpressACC to the public internet, but can remain off when the app is only reachable on a trusted private network behind a firewall. Its HTTP-only, same-site session is remembered for 30 days on each signed-in device and is invalidated immediately when the Family Space password changes. Admin sessions also use an HTTP-only, same-site cookie. User sessions are short-lived and scoped to one user. Login attempts are rate-limited, inputs are validated on the server, and household real-time data is only sent to authorized Family Space or admin sessions when protection is enabled.
+Routioneer is designed for self-hosting. Family Space can optionally be protected from **Admin → Settings → General** with a password that is separate from the admin password. Protection is strongly recommended before exposing Routioneer to the public internet, but can remain off when the app is only reachable on a trusted private network behind a firewall. Its HTTP-only, same-site session is remembered for 30 days on each signed-in device and is invalidated immediately when the Family Space password changes. Admin sessions also use an HTTP-only, same-site cookie. User sessions are short-lived and scoped to one user. Login attempts are rate-limited, inputs are validated on the server, and household real-time data is only sent to authorized Family Space or admin sessions when protection is enabled.
 
-For access over the public internet, place ExpressACC behind a maintained HTTPS reverse proxy and follow normal network-hardening practices.
+For access over the public internet, place Routioneer behind a maintained HTTPS reverse proxy and follow normal network-hardening practices.
 
 ## License
 

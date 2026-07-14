@@ -6,10 +6,10 @@ import test from 'node:test'
 import { createApplication } from '../index.js'
 
 async function fixture(t) {
-  const directory = await mkdtemp(join(tmpdir(), 'expressacc-record-settings-'))
+  const directory = await mkdtemp(join(tmpdir(), 'routioneer-record-settings-'))
   const publicPath = join(directory, 'dist')
   await mkdir(publicPath, { recursive: true })
-  await writeFile(join(publicPath, 'index.html'), '<!doctype html><title>ExpressACC test</title>')
+  await writeFile(join(publicPath, 'index.html'), '<!doctype html><title>Routioneer test</title>')
   const application = await createApplication({ databaseFile: join(directory, 'db.json'), publicPath })
   await new Promise((resolve) => application.server.listen(0, '127.0.0.1', resolve))
   const address = application.server.address()

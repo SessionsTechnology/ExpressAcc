@@ -4,9 +4,9 @@ import { createVuetify } from 'vuetify'
 
 export default createVuetify({
   theme: {
-    defaultTheme: 'expressAcc',
+    defaultTheme: 'routioneer',
     themes: {
-      expressAcc: {
+      routioneer: {
         dark: false,
         colors: {
           background: '#F4F7FB',
@@ -31,7 +31,7 @@ export default createVuetify({
           'on-info': '#092435',
         },
       },
-      expressAccDark: {
+      routioneerDark: {
         dark: true,
         colors: {
           background: '#111722',

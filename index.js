@@ -43,14 +43,16 @@ export async function createApplication(options = {}) {
     recoveryLogger: options.recoveryLogger,
   }))
 
-  const hasSocketSession = (socket, cookieName, secret, scope) => {
-    const token = readCookie(socket.handshake.headers.cookie, cookieName)
-    return Boolean(verifyToken(token, secret, scope))
+  const hasSocketSession = (socket, cookieNames, secret, scope) => {
+    return cookieNames.some((cookieName) => {
+      const token = readCookie(socket.handshake.headers.cookie, cookieName)
+      return Boolean(verifyToken(token, secret, scope))
+    })
   }
   const canReceiveCheckoutState = (socket) => (
     !service.isFamilySpaceProtected()
-    || hasSocketSession(socket, 'expressacc_family', service.settings.familySessionSecret, 'family')
-    || hasSocketSession(socket, 'expressacc_admin', service.settings.sessionSecret, 'admin')
+    || hasSocketSession(socket, ['routioneer_family', 'expressacc_family'], service.settings.familySessionSecret, 'family')
+    || hasSocketSession(socket, ['routioneer_admin', 'expressacc_admin'], service.settings.sessionSecret, 'admin')
   )
   const publishCheckoutState = async () => {
     const sockets = [...io.sockets.sockets.values()]
@@ -106,7 +108,7 @@ export async function createApplication(options = {}) {
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   const application = await createApplication()
   application.server.listen(port, host, () => {
-    console.log(`ExpressACC is ready at http://localhost:${port}`)
+    console.log(`Routioneer is ready at http://localhost:${port}`)
   })
 
   let shuttingDown = false
@@ -115,7 +117,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
     shuttingDown = true
     process.off('SIGINT', onInterrupt)
     process.off('SIGTERM', onTerminate)
-    console.log(`Received ${signal}; shutting down ExpressACC`)
+    console.log(`Received ${signal}; shutting down Routioneer`)
     await application.close()
   }
   const onInterrupt = () => shutdown('SIGINT')

@@ -17,7 +17,7 @@
           <v-form v-else @submit.prevent="resetPassword">
             <v-alert v-if="recoveryRequested" type="info" variant="tonal" class="mb-5 text-left">
               A recovery code was written to the container logs. On the Docker host, run
-              <code>docker compose logs express-acc</code>. The code expires in 10 minutes.
+              <code>docker compose logs routioneer</code>. The code expires in 10 minutes.
             </v-alert>
             <template v-if="recoveryRequested">
               <v-text-field v-model="recovery.code" label="Recovery code" autocomplete="one-time-code" autofocus />

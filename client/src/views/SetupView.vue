@@ -3,14 +3,14 @@
     <v-col cols="12" md="8" lg="7">
       <header class="mb-8">
         <p class="eyebrow mb-4">First things first</p>
-        <h1 class="page-heading compact-heading mb-4">Set up your activity center.</h1>
+        <h1 class="page-heading compact-heading mb-4">Set up Routioneer.</h1>
         <p class="page-lede">Your data stays in this self-hosted installation. Start with an admin password; users and devices come next.</p>
       </header>
       <v-card class="panel-card setup-card">
         <v-form @submit.prevent="submit">
           <v-card-text class="pa-5 pa-sm-8">
             <div class="setup-card-heading mb-7">
-              <v-avatar color="primary" variant="tonal" size="52"><v-icon icon="mdi-home-heart" size="28" /></v-avatar>
+              <v-avatar color="primary" variant="tonal" size="52"><v-icon icon="mdi-compass-outline" size="28" /></v-avatar>
               <div><h2 class="section-heading">Center details</h2><p class="muted text-body-2">You can change these later in Settings.</p></div>
             </div>
             <v-alert v-if="error" type="error" variant="tonal" class="mb-5">{{ error }}</v-alert>

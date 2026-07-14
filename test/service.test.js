@@ -3,11 +3,11 @@ import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { createDatabase } from '../server/database.js'
+import { createDatabase, emptyDatabase } from '../server/database.js'
 import { AppError, createService } from '../server/service.js'
 
 test('legacy databases migrate credentials and retain a backup', async (t) => {
-  const directory = await mkdtemp(join(tmpdir(), 'expressacc-legacy-'))
+  const directory = await mkdtemp(join(tmpdir(), 'routioneer-legacy-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
   const file = join(directory, 'db.json')
   await writeFile(file, JSON.stringify({
@@ -26,8 +26,25 @@ test('legacy databases migrate credentials and retain a backup', async (t) => {
   assert.equal(backup.adminSettings.applicationName, 'Legacy')
 })
 
+test('the former default application name migrates without changing custom names', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'routioneer-brand-migration-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const file = join(directory, 'db.json')
+  const original = emptyDatabase()
+  original.settings.applicationName = 'ExpressACC'
+  await writeFile(file, JSON.stringify(original))
+
+  const database = await createDatabase(file)
+  assert.equal(database.read().settings.applicationName, 'Routioneer')
+  await access(`${file}.bak`)
+
+  await database.transaction((data) => { data.settings.applicationName = 'The Smith Family' })
+  const reopened = await createDatabase(file)
+  assert.equal(reopened.read().settings.applicationName, 'The Smith Family')
+})
+
 test('failed transactions restore the last persisted state', async (t) => {
-  const directory = await mkdtemp(join(tmpdir(), 'expressacc-rollback-'))
+  const directory = await mkdtemp(join(tmpdir(), 'routioneer-rollback-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
   const file = join(directory, 'db.json')
   const database = await createDatabase(file)
@@ -47,7 +64,7 @@ test('failed transactions restore the last persisted state', async (t) => {
 })
 
 async function fixture(t) {
-  const directory = await mkdtemp(join(tmpdir(), 'expressacc-test-'))
+  const directory = await mkdtemp(join(tmpdir(), 'routioneer-test-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
   const database = await createDatabase(join(directory, 'db.json'))
   const service = createService(database)

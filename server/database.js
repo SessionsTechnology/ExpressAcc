@@ -5,6 +5,12 @@ import { JSONFilePreset } from 'lowdb/node'
 import { hashSecret } from './auth.js'
 
 const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const DEFAULT_APPLICATION_NAME = 'Routioneer'
+const LEGACY_DEFAULT_APPLICATION_NAME = 'ExpressACC'
+
+function migratedApplicationName(value) {
+  return !value || value === LEGACY_DEFAULT_APPLICATION_NAME ? DEFAULT_APPLICATION_NAME : value
+}
 
 export function emptyDatabase() {
   const now = new Date().toISOString()
@@ -12,7 +18,7 @@ export function emptyDatabase() {
     meta: { version: 2, createdAt: now, updatedAt: now },
     settings: {
       isSetup: false,
-      applicationName: 'ExpressACC',
+      applicationName: DEFAULT_APPLICATION_NAME,
       passwordHash: '',
       sessionSecret: randomBytes(32).toString('base64url'),
       familyPasswordHash: '',
@@ -54,6 +60,7 @@ async function migrate(data) {
       settings: {
         ...defaults.settings,
         ...data.settings,
+        applicationName: migratedApplicationName(data.settings?.applicationName),
         darkMode: data.settings?.darkMode === true,
         dailyTimeMinutes: { ...defaults.settings.dailyTimeMinutes, ...data.settings?.dailyTimeMinutes },
         sessionSecret: data.settings?.sessionSecret || defaults.settings.sessionSecret,
@@ -80,7 +87,7 @@ async function migrate(data) {
   const legacySettings = data.adminSettings || {}
   const next = emptyDatabase()
   next.settings.isSetup = Boolean(legacySettings.isSetup)
-  next.settings.applicationName = legacySettings.applicationName || 'ExpressACC'
+  next.settings.applicationName = migratedApplicationName(legacySettings.applicationName)
   next.settings.dailyTimeMinutes = Object.fromEntries(weekdays.map((day) => {
     const legacy = legacySettings.timeSettings?.find((entry) => entry.name === day)
     return [day, asNumber(legacy?.hours) * 60 + asNumber(legacy?.minutes)]

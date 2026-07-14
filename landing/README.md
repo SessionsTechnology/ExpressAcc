@@ -1,6 +1,6 @@
-# ExpressACC landing page
+# Routioneer landing page
 
-This folder is a self-contained static site. It has no build step and does not depend on the ExpressACC application server.
+This folder is a self-contained static site. It has no build step and does not depend on the Routioneer application server.
 
 The repository's GitHub Pages workflow publishes this folder to [sessionstechnology.github.io/ExpressAcc](https://sessionstechnology.github.io/ExpressAcc/) whenever landing-page files change on `main`.
 
@@ -23,4 +23,4 @@ Upload the contents of this folder to any static web host.
 - **Cloudflare Pages / Netlify:** use `landing` as the publish directory and leave the build command empty.
 - **Any static host:** serve `index.html` as the entry point.
 
-Page assets use relative paths, so the site works at either a domain root or a project subpath. Canonical and social-preview metadata point to the production GitHub Pages URL and should be updated if the site moves to another domain.
+Page assets use relative paths, so the site works at either a domain root or a project subpath. Canonical and social-preview metadata use `https://routioneer.com/`; the GitHub Pages workflow remains the current publishing mechanism until that domain is connected.

@@ -2,13 +2,13 @@
   <v-row justify="center">
     <v-col cols="12" md="9">
       <header class="mb-8">
-        <p class="eyebrow mb-4">About ExpressACC</p>
+        <p class="eyebrow mb-4">About Routioneer</p>
         <h1 class="page-title mb-5">Built for shared responsibility.</h1>
         <p class="page-lede">A practical, self-hosted home base for families, classrooms, churches, and other small communities.</p>
       </header>
       <v-card class="panel-card about-card">
         <v-card-text class="pa-5 pa-sm-8">
-          <p class="about-intro mb-7">ExpressACC keeps shared-item checkout, screen time, and chore rewards in one clear place—so everyone knows what is available and what comes next.</p>
+          <p class="about-intro mb-7">Routioneer keeps shared-item checkout, screen time, and chore rewards in one clear place—so everyone knows what is available and what comes next.</p>
           <div class="about-grid">
             <div class="about-point"><v-avatar color="primary" variant="tonal"><v-icon icon="mdi-account-check-outline" /></v-avatar><div><h2>Self service</h2><p>Users manage their own items and can always see today’s remaining allowance.</p></div></div>
             <div class="about-point"><v-avatar color="secondary" variant="tonal"><v-icon icon="mdi-view-dashboard-outline" /></v-avatar><div><h2>One clear view</h2><p>Admins review checkouts, adjust schedules, and approve chore rewards from one dashboard.</p></div></div>

@@ -27,11 +27,11 @@
 
   <g transform="translate(64 55)">
     <rect width="52" height="52" rx="17" fill="url(#brand)"/>
-    <path d="M13 25.5 26 14l13 11.5v14a2 2 0 0 1-2 2H15a2 2 0 0 1-2-2v-14Z" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M20 30c0-3 3.8-4.1 6-1.6 2.2-2.5 6-1.4 6 1.6 0 3.1-3.2 5.2-6 7.2-2.8-2-6-4.1-6-7.2Z" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="26" cy="26" r="14" fill="none" stroke="#fff" stroke-width="2.5"/>
+    <path d="m32 20-4 10-10 4 4-10 10-4Z" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
     <circle cx="50" cy="50" r="10" fill="#3eb58b" stroke="#fff" stroke-width="4"/>
-    <text x="72" y="25" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="25" font-weight="800" letter-spacing="-1">ExpressACC</text>
-    <text x="72" y="45" fill="#68758b" font-family="Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="2.3">FAMILY HOME BASE</text>
+    <text x="72" y="25" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="25" font-weight="800" letter-spacing="-1">Routioneer</text>
+    <text x="72" y="45" fill="#68758b" font-family="Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="2.3">SHARED ROUTINE HUB</text>
   </g>
 
   <g transform="translate(64 163)">
@@ -63,9 +63,10 @@
     <text x="224" y="29" fill="#768298" font-family="Arial, sans-serif" font-size="8">home.local</text>
     <rect y="49" width="500" height="63" fill="#fff"/>
     <rect x="19" y="64" width="34" height="34" rx="11" fill="url(#brand)"/>
-    <path d="m28 80 8-7 8 7v9H28Z" fill="none" stroke="#fff" stroke-width="1.5"/>
-    <text x="63" y="79" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="12" font-weight="800">Home Hub</text>
-    <text x="63" y="94" fill="#68758b" font-family="Arial, sans-serif" font-size="6" font-weight="700" letter-spacing="1.2">FAMILY HOME BASE</text>
+    <circle cx="36" cy="81" r="9" fill="none" stroke="#fff" stroke-width="1.5"/>
+    <path d="m40 77-2.7 6.7-6.7 2.7 2.7-6.7L40 77Z" fill="none" stroke="#fff" stroke-width="1.3"/>
+    <text x="63" y="79" fill="#182238" font-family="Avenir Next, Arial, sans-serif" font-size="12" font-weight="800">Routioneer</text>
+    <text x="63" y="94" fill="#68758b" font-family="Arial, sans-serif" font-size="6" font-weight="700" letter-spacing="1.2">SHARED ROUTINE HUB</text>
     <rect x="416" y="74" width="64" height="20" rx="10" fill="#e7f8f1"/>
     <circle cx="429" cy="84" r="3" fill="#3eb58b"/>
     <text x="437" y="87" fill="#278162" font-family="Arial, sans-serif" font-size="7" font-weight="700">Up to date</text>

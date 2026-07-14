@@ -1,14 +1,14 @@
 services:
-  express-acc:
+  routioneer:
     build: .
-    image: expressacc:latest
+    image: routioneer:latest
     environment:
       TZ: ${TZ:-America/Chicago}
       DATABASE_FILE: /data/db.json
     ports:
       - "${PORT:-3001}:3001"
     volumes:
-      - express-acc-data:/data
+      - routioneer-data:/data
     init: true
     read_only: true
     tmpfs:
@@ -21,4 +21,4 @@ services:
     stop_grace_period: 15s
 
 volumes:
-  express-acc-data:
+  routioneer-data:

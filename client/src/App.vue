@@ -4,11 +4,11 @@
     <div class="ambient ambient-two" aria-hidden="true" />
     <v-app-bar color="surface" flat :height="compactLandscape ? 66 : 82" class="app-bar">
       <div class="app-bar-content">
-        <v-btn to="/" variant="text" class="brand" aria-label="ExpressACC home">
-          <span class="brand-mark"><v-icon icon="mdi-home-heart" /></span>
+        <v-btn to="/" variant="text" class="brand" aria-label="Routioneer home">
+          <span class="brand-mark"><v-icon icon="mdi-compass-outline" /></span>
           <span class="brand-copy">
-            <span>{{ status.applicationName || 'ExpressACC' }}</span>
-            <small>family home base</small>
+            <span>Routioneer</span>
+            <small>{{ status.applicationName && status.applicationName !== 'Routioneer' ? status.applicationName : 'shared routine hub' }}</small>
           </span>
         </v-btn>
         <v-spacer />
@@ -54,7 +54,7 @@ const compactLandscape = computed(() => (
 function applyStatus(nextStatus) {
   Object.assign(status, nextStatus)
   const darkMode = Boolean(status.darkMode)
-  theme.change(darkMode ? 'expressAccDark' : 'expressAcc')
+  theme.change(darkMode ? 'routioneerDark' : 'routioneer')
   document.documentElement.dataset.theme = darkMode ? 'dark' : 'light'
 }
 

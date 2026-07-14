@@ -7,7 +7,7 @@ import { io as createSocketClient } from 'socket.io-client'
 import { createApplication } from '../index.js'
 
 test('HTTP setup and admin authentication protect private state', async (t) => {
-  const directory = await mkdtemp(join(tmpdir(), 'expressacc-api-'))
+  const directory = await mkdtemp(join(tmpdir(), 'routioneer-api-'))
   const publicPath = join(directory, 'dist')
   await mkdir(join(publicPath, 'assets'), { recursive: true })
   await writeFile(join(publicPath, 'index.html'), '<!doctype html><script src="/assets/app-123.js"></script>')
@@ -55,8 +55,11 @@ test('HTTP setup and admin authentication protect private state', async (t) => {
   })
   assert.equal(login.status, 200)
   const cookie = login.headers.get('set-cookie').split(';')[0]
+  assert.match(cookie, /^routioneer_admin=/)
   const authorized = await fetch(`${base}/admin/state`, { headers: { cookie } })
   assert.equal(authorized.status, 200)
+  const legacyCookie = cookie.replace(/^routioneer_admin=/, 'expressacc_admin=')
+  assert.equal((await fetch(`${base}/admin/me`, { headers: { cookie: legacyCookie } })).status, 200)
   const authorizedState = await authorized.json()
   assert.equal(authorizedState.settings.applicationName, 'API Test')
 
@@ -183,10 +186,10 @@ test('HTTP setup and admin authentication protect private state', async (t) => {
 })
 
 test('Family Space uses a separate remembered session and invalidates it when the password changes', async (t) => {
-  const directory = await mkdtemp(join(tmpdir(), 'expressacc-family-api-'))
+  const directory = await mkdtemp(join(tmpdir(), 'routioneer-family-api-'))
   const publicPath = join(directory, 'dist')
   await mkdir(publicPath, { recursive: true })
-  await writeFile(join(publicPath, 'index.html'), '<!doctype html><title>ExpressACC test</title>')
+  await writeFile(join(publicPath, 'index.html'), '<!doctype html><title>Routioneer test</title>')
   const application = await createApplication({ databaseFile: join(directory, 'db.json'), publicPath })
   await new Promise((resolve) => application.server.listen(0, '127.0.0.1', resolve))
   const address = application.server.address()
@@ -226,12 +229,14 @@ test('Family Space uses a separate remembered session and invalidates it when th
   })
   assert.equal(response.status, 200)
   const setCookie = response.headers.get('set-cookie')
-  assert.match(setCookie, /expressacc_family=/)
+  assert.match(setCookie, /routioneer_family=/)
   assert.match(setCookie, /HttpOnly/i)
   assert.match(setCookie, /SameSite=Strict/i)
   assert.match(setCookie, /Max-Age=2592000/i)
   const familyCookie = setCookie.split(';')[0]
   assert.equal((await fetch(`${base}/family/me`, { headers: { cookie: familyCookie } })).status, 200)
+  const legacyFamilyCookie = familyCookie.replace(/^routioneer_family=/, 'expressacc_family=')
+  assert.equal((await fetch(`${base}/family/me`, { headers: { cookie: legacyFamilyCookie } })).status, 200)
   assert.equal((await fetch(`${base}/state`, { headers: { cookie: familyCookie } })).status, 200)
 
   const familySocket = createSocketClient(origin, { transports: ['websocket'], extraHeaders: { cookie: familyCookie } })

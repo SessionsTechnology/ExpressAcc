@@ -22,7 +22,7 @@ test('signed tokens reject tampering and the wrong scope', () => {
 test('malformed credentials fail closed instead of throwing', async () => {
   assert.equal(await verifySecret('secret', 'scrypt$invalid$invalid'), false)
   assert.equal(await verifySecret('secret', { algorithm: 'scrypt' }), false)
-  assert.equal(readCookie('expressacc_admin=%E0%A4%A', 'expressacc_admin'), null)
+  assert.equal(readCookie('routioneer_admin=%E0%A4%A', 'routioneer_admin'), null)
 })
 
 test('recovery codes are strong, readable, and compared safely', () => {

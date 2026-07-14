@@ -14,7 +14,7 @@
     <v-alert v-if="notice" type="success" variant="tonal" closable class="mb-6" @click:close="notice = ''">{{ notice }}</v-alert>
     <v-alert v-if="error" type="error" variant="tonal" closable class="mb-6" @click:close="error = ''">{{ error }}</v-alert>
     <v-alert v-if="!familySpaceProtected" type="warning" variant="tonal" class="mb-6" title="Family Space is not password protected">
-      This is fine on a trusted private network. Before making ExpressACC available on the public internet, add a separate Family Space password in Settings.
+      This is fine on a trusted private network. Before making Routioneer available on the public internet, add a separate Family Space password in Settings.
       <template #append><v-btn to="/settings" color="warning" variant="tonal">Review access</v-btn></template>
     </v-alert>
 

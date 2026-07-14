@@ -32,6 +32,16 @@ const choresSchema = z.array(choreSchema.extend({ id: id.optional() })).max(250)
 const userPatchSchema = nonEmptyPatch(userSchema)
 const itemPatchSchema = nonEmptyPatch(itemSchema)
 const chorePatchSchema = nonEmptyPatch(choreSchema)
+const adminCookieNames = ['routioneer_admin', 'expressacc_admin']
+const familyCookieNames = ['routioneer_family', 'expressacc_family']
+
+function hasValidSession(cookieHeader, names, secret, scope) {
+  return names.some((name) => verifyToken(readCookie(cookieHeader, name), secret, scope))
+}
+
+function clearCookies(names) {
+  return names.map((name) => `${name}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`)
+}
 
 function asyncRoute(handler) {
   return (request, response, next) => Promise.resolve(handler(request, response, next)).catch(next)
@@ -49,14 +59,12 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
   let pendingRecovery = null
 
   const requireAdmin = (request, _response, next) => {
-    const token = readCookie(request.headers.cookie, 'expressacc_admin')
-    if (!verifyToken(token, service.settings.sessionSecret, 'admin')) return next(new AppError(401, 'Admin sign-in required.'))
+    if (!hasValidSession(request.headers.cookie, adminCookieNames, service.settings.sessionSecret, 'admin')) return next(new AppError(401, 'Admin sign-in required.'))
     next()
   }
   const hasFamilySession = (request) => {
     if (!service.isFamilySpaceProtected()) return true
-    const token = readCookie(request.headers.cookie, 'expressacc_family')
-    return Boolean(verifyToken(token, service.settings.familySessionSecret, 'family'))
+    return hasValidSession(request.headers.cookie, familyCookieNames, service.settings.familySessionSecret, 'family')
   }
   const requireFamily = (request, _response, next) => {
     if (!hasFamilySession(request)) return next(new AppError(401, 'Family Space sign-in required.'))
@@ -88,11 +96,11 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
     if (!(await service.verifyFamilyPassword(password))) throw new AppError(401, 'Incorrect Family Space password.')
     const token = createToken({ scope: 'family' }, service.settings.familySessionSecret, 30 * 24 * 60 * 60)
     const secure = request.secure || process.env.COOKIE_SECURE === 'true'
-    response.setHeader('Set-Cookie', `expressacc_family=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${secure ? '; Secure' : ''}`)
+    response.setHeader('Set-Cookie', `routioneer_family=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${secure ? '; Secure' : ''}`)
     response.json({ authenticated: true, protected: true })
   }))
   router.post('/family/logout', (_request, response) => {
-    response.setHeader('Set-Cookie', 'expressacc_family=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0')
+    response.setHeader('Set-Cookie', clearCookies(familyCookieNames))
     response.json({ authenticated: false })
   })
 
@@ -101,7 +109,7 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
     if (!(await service.verifyAdmin(password))) throw new AppError(401, 'Incorrect admin password.')
     const token = createToken({ scope: 'admin' }, service.settings.sessionSecret, 12 * 60 * 60)
     const secure = request.secure || process.env.COOKIE_SECURE === 'true'
-    response.setHeader('Set-Cookie', `expressacc_admin=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=43200${secure ? '; Secure' : ''}`)
+    response.setHeader('Set-Cookie', `routioneer_admin=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=43200${secure ? '; Secure' : ''}`)
     response.json({ authenticated: true })
   }))
   router.post('/admin/recovery/request', recoveryRequestLimiter, (request, response, next) => {
@@ -112,10 +120,10 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
     recoveryLogger([
       '',
       '============================================================',
-      'ExpressACC admin password recovery',
+      'Routioneer admin password recovery',
       `Recovery code: ${code}`,
       `Expires at: ${new Date(expiresAt).toISOString()}`,
-      'Enter this code on the ExpressACC admin sign-in screen.',
+      'Enter this code on the Routioneer admin sign-in screen.',
       '============================================================',
       '',
     ].join('\n'))
@@ -137,7 +145,7 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
     response.json({ reset: true })
   }))
   router.post('/admin/logout', (_request, response) => {
-    response.setHeader('Set-Cookie', 'expressacc_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0')
+    response.setHeader('Set-Cookie', clearCookies(adminCookieNames))
     response.json({ authenticated: false })
   })
   router.get('/admin/me', requireAdmin, (_request, response) => response.json({ authenticated: true }))
@@ -170,7 +178,7 @@ export function createApiRouter({ service, notify, recoveryLogger = console.warn
   }))
   router.post('/admin/completions/:completionId/reset', requireAdmin, changed(async (request) => service.resetCompletion(request.params.completionId)))
   router.get('/admin/export', requireAdmin, (_request, response) => {
-    response.setHeader('Content-Disposition', `attachment; filename="expressacc-backup-${new Date().toISOString().slice(0, 10)}.json"`)
+    response.setHeader('Content-Disposition', `attachment; filename="routioneer-backup-${new Date().toISOString().slice(0, 10)}.json"`)
     response.json(service.exportData())
   })
   router.post('/admin/import', requireAdmin, changed(async (request) => service.importData(request.body)))

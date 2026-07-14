@@ -1,8 +1,8 @@
 {
-  "name": "express-acc",
+  "name": "routioneer",
   "version": "1.0.0",
   "private": true,
-  "description": "A self-hosted household device checkout and chore manager",
+  "description": "A self-hosted shared-item checkout, screen-time, and chore manager",
   "type": "module",
   "engines": {
     "node": ">=24"

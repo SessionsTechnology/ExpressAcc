@@ -131,7 +131,7 @@ function sanitizedSettings(settings) {
 }
 
 function validateBackup(input) {
-  if (!input || typeof input !== 'object' || (!input.settings && !input.adminSettings)) throw new AppError(400, 'This does not look like an ExpressACC backup.')
+  if (!input || typeof input !== 'object' || (!input.settings && !input.adminSettings)) throw new AppError(400, 'This does not look like a Routioneer backup.')
   if (input.meta?.version === 2) {
     if (typeof input.settings?.applicationName !== 'string') throw new AppError(400, 'The backup has invalid settings.')
     const validUsers = Array.isArray(input.users) && input.users.every((user) => typeof user.id === 'string' && typeof user.name === 'string')

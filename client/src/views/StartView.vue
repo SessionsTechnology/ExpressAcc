@@ -11,7 +11,7 @@
         <div class="hub-preview-orbit hub-preview-orbit--one" />
         <div class="hub-preview-orbit hub-preview-orbit--two" />
         <div class="hub-preview-card hub-preview-card--main">
-          <div class="preview-card-heading"><v-icon icon="mdi-home-heart" /><span>Today at home</span></div>
+          <div class="preview-card-heading"><v-icon icon="mdi-compass-outline" /><span>Today at home</span></div>
           <div class="preview-family-row">
             <span class="preview-person preview-person--blue">A</span>
             <span class="preview-person preview-person--violet">M</span>
@@ -68,7 +68,7 @@
 
     <div class="start-footer mt-8">
       <div><v-icon icon="mdi-lock-outline" size="18" /><span>Private and self-hosted</span></div>
-      <v-btn to="/about" variant="text" append-icon="mdi-arrow-right">About ExpressACC</v-btn>
+      <v-btn to="/about" variant="text" append-icon="mdi-arrow-right">About Routioneer</v-btn>
     </div>
   </section>
 </template>
