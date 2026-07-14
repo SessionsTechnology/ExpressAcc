@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto'
+import { createHash, createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto'
 import { promisify } from 'node:util'
 
 const scrypt = promisify(scryptCallback)
@@ -53,4 +53,18 @@ export function readCookie(header, name) {
   } catch {
     return null
   }
+}
+
+export function createRecoveryCode() {
+  return randomBytes(8).toString('hex').toUpperCase().match(/.{1,4}/g).join('-')
+}
+
+export function recoveryCodeDigest(code) {
+  return createHash('sha256').update(String(code || '').trim().toUpperCase()).digest()
+}
+
+export function recoveryCodeMatches(code, expectedDigest) {
+  if (!Buffer.isBuffer(expectedDigest)) return false
+  const actual = recoveryCodeDigest(code)
+  return actual.length === expectedDigest.length && timingSafeEqual(actual, expectedDigest)
 }

@@ -77,6 +77,14 @@ Legacy plaintext passwords and PINs are converted to salted scrypt hashes during
 
 Use **Admin → Settings → Data** to download a complete JSON backup. Restoring a backup first copies the current database to `db.json.bak`. Keep external copies of important backups; the `.bak` file only protects the most recent migration or restore operation.
 
+If the admin password is lost, choose **Forgot admin password?** on the admin sign-in screen and send a recovery code to the Docker logs. View it from the Docker host with:
+
+```sh
+docker compose logs express-acc
+```
+
+Enter the code and a new password on the sign-in screen within 10 minutes. Recovery codes can only be used once, are never sent to the browser, and a successful reset signs out existing admin sessions.
+
 ## Security notes
 
 ExpressACC is designed for a trusted self-hosted network. Admin sessions use an HTTP-only, same-site cookie. User sessions are short-lived and scoped to one user. Login attempts are rate-limited, inputs are validated on the server, and public real-time events never contain PIN or password data.

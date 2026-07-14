@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createToken, hashSecret, readCookie, verifySecret, verifyToken } from '../server/auth.js'
+import { createRecoveryCode, createToken, hashSecret, readCookie, recoveryCodeDigest, recoveryCodeMatches, verifySecret, verifyToken } from '../server/auth.js'
 
 test('secrets are salted and verified without storing plaintext', async () => {
   const first = await hashSecret('correct horse battery staple')
@@ -23,4 +23,13 @@ test('malformed credentials fail closed instead of throwing', async () => {
   assert.equal(await verifySecret('secret', 'scrypt$invalid$invalid'), false)
   assert.equal(await verifySecret('secret', { algorithm: 'scrypt' }), false)
   assert.equal(readCookie('expressacc_admin=%E0%A4%A', 'expressacc_admin'), null)
+})
+
+test('recovery codes are strong, readable, and compared safely', () => {
+  const code = createRecoveryCode()
+  assert.match(code, /^[A-F0-9]{4}(?:-[A-F0-9]{4}){3}$/)
+  const digest = recoveryCodeDigest(code)
+  assert.equal(recoveryCodeMatches(code.toLowerCase(), digest), true)
+  assert.equal(recoveryCodeMatches('0000-0000-0000-0000', digest), false)
+  assert.equal(recoveryCodeMatches(code, 'not-a-buffer'), false)
 })

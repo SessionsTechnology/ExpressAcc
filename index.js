@@ -36,7 +36,11 @@ export async function createApplication(options = {}) {
     },
   }))
   app.use(express.json({ limit: '2mb' }))
-  app.use('/api', createApiRouter({ service, database, notify: () => io.emit('state:changed') }))
+  app.use('/api', createApiRouter({
+    service,
+    notify: () => io.emit('state:changed'),
+    recoveryLogger: options.recoveryLogger,
+  }))
 
   const publicPath = options.publicPath || join(__dirname, 'client', 'dist')
   app.use('/assets', express.static(join(publicPath, 'assets'), {

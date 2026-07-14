@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { hashSecret, verifySecret } from './auth.js'
 import { emptyDatabase, weekdays } from './database.js'
 
@@ -193,6 +193,16 @@ export function createService(database) {
 
     verifyAdmin(password) {
       return verifySecret(password, state().settings.passwordHash)
+    },
+
+    async resetAdminPassword(password) {
+      const passwordHash = await hashSecret(password)
+      return database.transaction((data) => {
+        data.settings.passwordHash = passwordHash
+        data.settings.sessionSecret = randomBytes(32).toString('base64url')
+        log(data, 'security', 'Admin password reset with a recovery code')
+        return { reset: true }
+      })
     },
 
     async getPublicState() {

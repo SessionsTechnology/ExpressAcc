@@ -11,7 +11,12 @@ test('HTTP setup and admin authentication protect private state', async (t) => {
   await mkdir(join(publicPath, 'assets'), { recursive: true })
   await writeFile(join(publicPath, 'index.html'), '<!doctype html><script src="/assets/app-123.js"></script>')
   await writeFile(join(publicPath, 'assets', 'app-123.js'), 'console.log("test asset")')
-  const application = await createApplication({ databaseFile: join(directory, 'db.json'), publicPath })
+  const recoveryLogs = []
+  const application = await createApplication({
+    databaseFile: join(directory, 'db.json'),
+    publicPath,
+    recoveryLogger: (message) => recoveryLogs.push(message),
+  })
   await new Promise((resolve) => application.server.listen(0, '127.0.0.1', resolve))
   const address = application.server.address()
   const origin = `http://127.0.0.1:${address.port}`
@@ -135,4 +140,43 @@ test('HTTP setup and admin authentication protect private state', async (t) => {
   const resetCompletion = await fetch(`${base}/admin/completions/${completion.id}/reset`, { method: 'POST', headers: { cookie } })
   assert.equal(resetCompletion.status, 200)
   assert.equal((await resetCompletion.json()).reset, true)
+
+  const recoveryRequest = await fetch(`${base}/admin/recovery/request`, { method: 'POST' })
+  assert.equal(recoveryRequest.status, 202)
+  const recoveryResponse = await recoveryRequest.json()
+  assert.deepEqual(recoveryResponse, { requested: true, expiresInSeconds: 600 })
+  assert.equal(JSON.stringify(recoveryResponse).includes('Recovery code'), false)
+  assert.equal(recoveryLogs.length, 1)
+  const recoveryCode = recoveryLogs[0].match(/Recovery code: ([A-F0-9-]+)/)?.[1]
+  assert.match(recoveryCode, /^[A-F0-9]{4}(?:-[A-F0-9]{4}){3}$/)
+
+  const wrongRecovery = await fetch(`${base}/admin/recovery/reset`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ code: '0000-0000-0000-0000', password: 'new-password-123' }),
+  })
+  assert.equal(wrongRecovery.status, 401)
+
+  const recovered = await fetch(`${base}/admin/recovery/reset`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ code: recoveryCode.toLowerCase(), password: 'new-password-123' }),
+  })
+  assert.equal(recovered.status, 200)
+  assert.deepEqual(await recovered.json(), { reset: true })
+
+  const oldSession = await fetch(`${base}/admin/state`, { headers: { cookie } })
+  assert.equal(oldSession.status, 401)
+  const oldPassword = await fetch(`${base}/admin/login`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'password123' }),
+  })
+  assert.equal(oldPassword.status, 401)
+  const newPassword = await fetch(`${base}/admin/login`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'new-password-123' }),
+  })
+  assert.equal(newPassword.status, 200)
+
+  const reusedRecovery = await fetch(`${base}/admin/recovery/reset`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ code: recoveryCode, password: 'another-password-123' }),
+  })
+  assert.equal(reusedRecovery.status, 401)
 })

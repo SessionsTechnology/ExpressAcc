@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { rateLimit } from 'express-rate-limit'
 import { z } from 'zod'
-import { createToken, readCookie, verifyToken } from './auth.js'
+import { createRecoveryCode, createToken, readCookie, recoveryCodeDigest, recoveryCodeMatches, verifyToken } from './auth.js'
 import { AppError } from './service.js'
 import { weekdays } from './database.js'
 
@@ -32,9 +32,12 @@ function getBearer(request) {
   return request.headers.authorization?.startsWith('Bearer ') ? request.headers.authorization.slice(7) : null
 }
 
-export function createApiRouter({ service, notify }) {
+export function createApiRouter({ service, notify, recoveryLogger = console.warn }) {
   const router = Router()
   const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false })
+  const recoveryRequestLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: 'draft-8', legacyHeaders: false })
+  const recoveryLifetimeMs = 10 * 60 * 1000
+  let pendingRecovery = null
 
   const requireAdmin = (request, _response, next) => {
     const token = readCookie(request.headers.cookie, 'expressacc_admin')
@@ -64,6 +67,38 @@ export function createApiRouter({ service, notify }) {
     const secure = request.secure || process.env.COOKIE_SECURE === 'true'
     response.setHeader('Set-Cookie', `expressacc_admin=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=43200${secure ? '; Secure' : ''}`)
     response.json({ authenticated: true })
+  }))
+  router.post('/admin/recovery/request', recoveryRequestLimiter, (request, response, next) => {
+    if (!service.settings.isSetup) return next(new AppError(409, 'Complete setup before recovering an admin password.'))
+    const code = createRecoveryCode()
+    const expiresAt = Date.now() + recoveryLifetimeMs
+    pendingRecovery = { digest: recoveryCodeDigest(code), expiresAt }
+    recoveryLogger([
+      '',
+      '============================================================',
+      'ExpressACC admin password recovery',
+      `Recovery code: ${code}`,
+      `Expires at: ${new Date(expiresAt).toISOString()}`,
+      'Enter this code on the ExpressACC admin sign-in screen.',
+      '============================================================',
+      '',
+    ].join('\n'))
+    response.status(202).json({ requested: true, expiresInSeconds: recoveryLifetimeMs / 1000 })
+  })
+  router.post('/admin/recovery/reset', loginLimiter, asyncRoute(async (request, response) => {
+    const input = z.object({
+      code: z.string().trim().min(1).max(100),
+      password: z.string().min(8).max(200),
+    }).parse(request.body)
+    if (!pendingRecovery || pendingRecovery.expiresAt <= Date.now()) {
+      pendingRecovery = null
+      throw new AppError(401, 'The recovery code is invalid or has expired.')
+    }
+    if (!recoveryCodeMatches(input.code, pendingRecovery.digest)) throw new AppError(401, 'The recovery code is invalid or has expired.')
+    pendingRecovery = null
+    await service.resetAdminPassword(input.password)
+    notify()
+    response.json({ reset: true })
   }))
   router.post('/admin/logout', (_request, response) => {
     response.setHeader('Set-Cookie', 'expressacc_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0')
