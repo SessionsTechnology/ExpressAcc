@@ -57,7 +57,7 @@ By default, application data is written to `lowdb/db.json`. Override it with `DA
 docker compose up -d --build
 ```
 
-Open [http://localhost:3001](http://localhost:3001). Data is stored in the `routioneer-data` Docker volume.
+Open [http://localhost:3001](http://localhost:3001). Data is stored in the legacy-named `express-acc-data` Docker volume so existing installations keep using their original database after upgrading.
 
 Optional environment overrides:
 
@@ -69,8 +69,9 @@ TZ=America/New_York PORT=8080 docker compose up -d
 
 1. Back up the existing `lowdb/db.json` or Docker volume.
 2. Start the new version with the same data location.
-3. Routioneer migrates the legacy schema and former default application name on first launch, then saves the original file as `db.json.bak`. Custom application names remain unchanged.
-4. Sign in with the existing admin password and review users, items, and daily allowances.
+3. The Compose configuration continues using the `express-acc-data` volume key for upgrade compatibility; do not replace it with a new empty volume.
+4. Routioneer migrates the legacy schema and former default application name on first launch, then saves the original file as `db.json.bak`. Custom application names remain unchanged.
+5. Sign in with the existing admin password and review users, items, and daily allowances.
 
 Legacy plaintext passwords and PINs are converted to salted scrypt hashes during migration. They are never returned to the browser afterward.
 

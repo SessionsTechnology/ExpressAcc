@@ -8,7 +8,8 @@ services:
     ports:
       - "${PORT:-3001}:3001"
     volumes:
-      - routioneer-data:/data
+      # Keep the legacy key so upgrades continue mounting existing data.
+      - express-acc-data:/data
     init: true
     read_only: true
     tmpfs:
@@ -21,4 +22,4 @@ services:
     stop_grace_period: 15s
 
 volumes:
-  routioneer-data:
+  express-acc-data:
