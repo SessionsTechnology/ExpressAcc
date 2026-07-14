@@ -76,22 +76,22 @@
     <v-dialog v-model="deleteDialog" :persistent="deleteBusy" max-width="460">
       <v-card class="pa-2"><v-card-title>Delete {{ deleteType }}?</v-card-title><v-card-text>Delete “{{ deleteName }}”? This cannot be undone.</v-card-text><v-card-actions><v-spacer /><v-btn :disabled="deleteBusy" @click="deleteDialog = false">Cancel</v-btn><v-btn color="error" :loading="deleteBusy" @click="confirmRemove">Delete</v-btn></v-card-actions></v-card>
     </v-dialog>
-    <v-snackbar :model-value="snackbar.open" :color="snackbar.color" location="bottom end" :timeout="4500" :role="snackbar.color === 'error' ? 'alert' : 'status'" :aria-live="snackbar.color === 'error' ? 'assertive' : 'polite'" aria-atomic="true" @update:model-value="setSnackbarOpen">
-      <div class="snackbar-content"><v-icon :icon="snackbar.color === 'success' ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'" /><span>{{ snackbar.message }}</span></div>
-      <template #actions><v-btn variant="text" @click="setSnackbarOpen(false)">Close</v-btn></template>
-    </v-snackbar>
+    <v-snackbar-queue v-model="snackbars" :total-visible="5" display-strategy="overflow" :gap="10" location="bottom end" :timeout="4500">
+      <template #text="{ item }"><div class="snackbar-content"><v-icon :icon="item.color === 'success' ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'" /><span>{{ item.text }}</span></div></template>
+      <template #actions="{ props }"><v-btn variant="text" v-bind="props">Close</v-btn></template>
+    </v-snackbar-queue>
   </section>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref, toRaw } from 'vue'
+import { computed, onMounted, reactive, ref, toRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../lib/api.js'
 const router = useRouter(); const ready = ref(false); const saving = ref(false); const savingDarkMode = ref(false); const tab = ref('general'); const backupFile = ref(null); const openItem = ref(null); const openChore = ref(null)
 const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; const recurrences = [{title:'One time',value:'once'},{title:'Daily',value:'daily'},{title:'Weekly',value:'weekly'}]
 const guessedZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; const timeZones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [guessedZone, 'UTC']
 const settings = reactive({ applicationName:'', password:'', timeZone:guessedZone, darkMode:false, kioskMessage:'', kioskTimeoutSeconds:30, dailyTimeMinutes:Object.fromEntries(weekdays.map(day => [day,0])) }); const users = ref([]); const items = ref([]); const chores = ref([])
-const snackbar = reactive({ open:false, color:'success', message:'' }); const snackbarQueue = []; const entryOperations = reactive(new Map()); const deleteTarget = ref(null)
+const snackbars = ref([]); const entryOperations = reactive(new Map()); const deleteTarget = ref(null)
 const assignableUsers = computed(() => users.value.filter((user) => user.id && !user.disabled))
 const hasEntryOperations = computed(() => entryOperations.size > 0)
 const deleteBusy = computed(() => Boolean(deleteTarget.value && entryOperation(deleteTarget.value.entry) === 'delete'))
@@ -100,14 +100,9 @@ const deleteType = computed(() => deleteTarget.value ? entryConfig[deleteTarget.
 const deleteName = computed(() => deleteTarget.value?.entry.name || deleteTarget.value?.entry.title || `this ${deleteType.value}`)
 const accordionValues = new WeakMap(); let nextAccordionValue = 0
 function accordionValue(entry, type) { const rawEntry = toRaw(entry); if (rawEntry.id) return `${type}-${rawEntry.id}`; if (!accordionValues.has(rawEntry)) accordionValues.set(rawEntry, `${type}-new-${++nextAccordionValue}`); return accordionValues.get(rawEntry) }
-function showNextSnackbar() { if (!snackbar.open && snackbarQueue.length) Object.assign(snackbar, snackbarQueue.shift(), { open:true }) }
 function showSnackbar(message, color = 'success') {
-  const notification = { color, message }
-  if (color === 'error') snackbarQueue.unshift(notification); else snackbarQueue.push(notification)
-  if (snackbar.open && color === 'error' && snackbar.color !== 'error') snackbar.open = false
-  nextTick(showNextSnackbar)
+  snackbars.value.push({ text:message, color })
 }
-function setSnackbarOpen(value) { snackbar.open = value; if (!value) nextTick(showNextSnackbar) }
 function entryOperation(entry) { return entryOperations.get(entry) || '' }
 function isEntryBusy(entry) { return saving.value || Boolean(entryOperation(entry)) }
 async function load() { try { const state = await api('/admin/state'); Object.assign(settings, state.settings, { password: '' }); users.value = state.users.map(user => ({ ...user, pin:'', clearPin:false })); items.value = state.items; chores.value = state.chores } catch (exception) { if (exception.status === 401) return router.replace('/admin/login'); showSnackbar(exception.message, 'error') } finally { ready.value = true } }
