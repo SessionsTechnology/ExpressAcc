@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createToken, hashSecret, verifySecret, verifyToken } from '../server/auth.js'
+import { createToken, hashSecret, readCookie, verifySecret, verifyToken } from '../server/auth.js'
 
 test('secrets are salted and verified without storing plaintext', async () => {
   const first = await hashSecret('correct horse battery staple')
@@ -16,4 +16,11 @@ test('signed tokens reject tampering and the wrong scope', () => {
   assert.equal(verifyToken(token, 'test-secret', 'user').userId, 'user-1')
   assert.equal(verifyToken(token, 'test-secret', 'admin'), null)
   assert.equal(verifyToken(`${token}x`, 'test-secret', 'user'), null)
+  assert.equal(verifyToken(`${token}.extra`, 'test-secret', 'user'), null)
+})
+
+test('malformed credentials fail closed instead of throwing', async () => {
+  assert.equal(await verifySecret('secret', 'scrypt$invalid$invalid'), false)
+  assert.equal(await verifySecret('secret', { algorithm: 'scrypt' }), false)
+  assert.equal(readCookie('expressacc_admin=%E0%A4%A', 'expressacc_admin'), null)
 })

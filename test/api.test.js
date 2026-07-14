@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -7,15 +7,26 @@ import { createApplication } from '../index.js'
 
 test('HTTP setup and admin authentication protect private state', async (t) => {
   const directory = await mkdtemp(join(tmpdir(), 'expressacc-api-'))
-  const application = await createApplication({ databaseFile: join(directory, 'db.json') })
+  const publicPath = join(directory, 'dist')
+  await mkdir(join(publicPath, 'assets'), { recursive: true })
+  await writeFile(join(publicPath, 'index.html'), '<!doctype html><script src="/assets/app-123.js"></script>')
+  await writeFile(join(publicPath, 'assets', 'app-123.js'), 'console.log("test asset")')
+  const application = await createApplication({ databaseFile: join(directory, 'db.json'), publicPath })
   await new Promise((resolve) => application.server.listen(0, '127.0.0.1', resolve))
   const address = application.server.address()
-  const base = `http://127.0.0.1:${address.port}/api`
+  const origin = `http://127.0.0.1:${address.port}`
+  const base = `${origin}/api`
   t.after(async () => {
-    application.close()
-    await new Promise((resolve) => application.server.close(resolve))
+    await application.close()
+    assert.equal(application.server.listening, false)
     await rm(directory, { recursive: true, force: true })
   })
+
+  const index = await fetch(origin)
+  assert.match(index.headers.get('cache-control'), /no-cache/)
+  const asset = await fetch(`${origin}/assets/app-123.js`)
+  assert.match(asset.headers.get('cache-control'), /max-age=31536000/)
+  assert.match(asset.headers.get('cache-control'), /immutable/)
 
   const health = await fetch(`${base}/health`)
   assert.equal(health.status, 200)
@@ -82,10 +93,22 @@ test('HTTP setup and admin authentication protect private state', async (t) => {
   })
   assert.equal(savedChores.status, 200)
   const chore = (await savedChores.json())[0]
+  const savedItems = await fetch(`${base}/admin/items`, {
+    method: 'PUT', headers: { cookie, 'content-type': 'application/json' },
+    body: JSON.stringify([{ name: 'Board game', isTimed: false, assignedUserIds: [user.id] }]),
+  })
+  assert.equal(savedItems.status, 200)
+  const item = (await savedItems.json())[0]
   const unlock = await fetch(`${base}/users/${user.id}/unlock`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin: '' }),
   })
   const userToken = (await unlock.json()).token
+  const blockedCheckout = await fetch(`${base}/users/${user.id}/checkout`, {
+    method: 'POST', headers: { authorization: `Bearer ${userToken}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ itemId: item.id }),
+  })
+  assert.equal(blockedCheckout.status, 409)
+  assert.match((await blockedCheckout.json()).error, /Dishes/)
   const submitted = await fetch(`${base}/users/${user.id}/chores/${chore.id}/complete`, {
     method: 'POST', headers: { authorization: `Bearer ${userToken}` },
   })
@@ -104,6 +127,11 @@ test('HTTP setup and admin authentication protect private state', async (t) => {
     method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ status: 'approved' }),
   })
   assert.equal(approved.status, 200)
+  const checkout = await fetch(`${base}/users/${user.id}/checkout`, {
+    method: 'POST', headers: { authorization: `Bearer ${userToken}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ itemId: item.id }),
+  })
+  assert.equal(checkout.status, 200)
   const resetCompletion = await fetch(`${base}/admin/completions/${completion.id}/reset`, { method: 'POST', headers: { cookie } })
   assert.equal(resetCompletion.status, 200)
   assert.equal((await resetCompletion.json()).reset, true)

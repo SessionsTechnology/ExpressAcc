@@ -92,7 +92,7 @@ function chorePeriod(chore, dayKey) {
 }
 
 function isCheckoutRequirement(chore, userId) {
-  return !chore.disabled && Number(chore.rewardMinutes) === 0 && chore.assignedUserIds.includes(userId)
+  return !chore.disabled && (!chore.assignedUserIds.length || chore.assignedUserIds.includes(userId))
 }
 
 function choreCompletion(data, userId, chore, dayKey) {

@@ -55,7 +55,7 @@
       </v-window-item>
 
       <v-window-item value="chores">
-        <v-card class="glass-card panel-card settings-panel pa-3 pa-sm-6"><v-card-text><div class="content-section-header settings-toolbar mb-5"><div><h2 class="section-heading">Chores and rewards</h2><p class="muted">Submitted chores require admin approval. A 0-minute chore assigned to specific people must be approved before they can check out an item.</p></div><v-btn color="primary" prepend-icon="mdi-plus" @click="addChore">Add chore</v-btn></div>
+        <v-card class="glass-card panel-card settings-panel pa-3 pa-sm-6"><v-card-text><div class="content-section-header settings-toolbar mb-5"><div><h2 class="section-heading">Chores and rewards</h2><p class="muted">Submitted chores require admin approval. Every chore assigned to a user must be approved before they can check out an item.</p></div><v-btn color="primary" prepend-icon="mdi-plus" @click="addChore">Add chore</v-btn></div>
           <v-expansion-panels v-model="openChore" variant="accordion" class="settings-accordion">
             <v-expansion-panel v-for="(chore,index) in chores" :key="accordionValue(chore, 'chore')" :value="accordionValue(chore, 'chore')" class="settings-entry">
               <v-expansion-panel-title class="settings-accordion-title">{{ chore.title?.trim() || 'New chore' }}</v-expansion-panel-title>

@@ -26,6 +26,26 @@ test('legacy databases migrate credentials and retain a backup', async (t) => {
   assert.equal(backup.adminSettings.applicationName, 'Legacy')
 })
 
+test('failed transactions restore the last persisted state', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'expressacc-rollback-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const file = join(directory, 'db.json')
+  const database = await createDatabase(file)
+  await database.transaction(() => {})
+  const before = structuredClone(database.read())
+
+  await assert.rejects(
+    () => database.transaction((data) => {
+      data.settings.applicationName = 'Uncommitted name'
+      throw new Error('Simulated transaction failure')
+    }),
+    /Simulated transaction failure/,
+  )
+
+  assert.deepEqual(database.read(), before)
+  assert.deepEqual(JSON.parse(await readFile(file, 'utf8')), before)
+})
+
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), 'expressacc-test-'))
   t.after(() => rm(directory, { recursive: true, force: true }))
@@ -164,39 +184,60 @@ test('resetting an approved chore reverses its current-day reward and permits re
   assert.equal((await service.completeChore(user.id, chore.id)).status, 'pending')
 })
 
-test('assigned zero-minute chores require approval before any item can be checked out', async (t) => {
+test('all assigned chores require approval before any item can be checked out', async (t) => {
   const { service, user, item } = await fixture(t)
   await service.saveItems([{ id: item.id, name: item.name, description: item.description, isTimed: false }])
-  await service.saveChores([{ title: 'Make the bed', description: '', rewardMinutes: 0, recurrence: 'daily', assignedUserIds: [user.id] }])
+  await service.saveChores([
+    { title: 'Make the bed', description: '', rewardMinutes: 15, recurrence: 'daily', assignedUserIds: [user.id] },
+    { title: 'Put clothes away', description: '', rewardMinutes: 0, recurrence: 'daily', assignedUserIds: [user.id] },
+  ])
   const userState = await service.getUserState(user.id)
-  const chore = userState.chores[0]
+  const [rewardedChore, secondChore] = userState.chores
 
-  assert.equal(chore.requiredForCheckout, true)
+  assert.equal(userState.chores.every((chore) => chore.requiredForCheckout), true)
   assert.equal(userState.checkoutBlocked, true)
   await assert.rejects(
     () => service.checkout(user.id, item.id),
-    (error) => error instanceof AppError && error.status === 409 && error.message.includes('Make the bed'),
+    (error) => error instanceof AppError && error.status === 409 && error.message.includes('Make the bed') && error.message.includes('Put clothes away'),
   )
 
-  const completion = await service.completeChore(user.id, chore.id)
+  const rewardedCompletion = await service.completeChore(user.id, rewardedChore.id)
+  await service.reviewCompletion(rewardedCompletion.id, 'approved')
   assert.equal((await service.getUserState(user.id)).checkoutBlocked, true)
-  await assert.rejects(() => service.checkout(user.id, item.id), (error) => error instanceof AppError && error.status === 409)
+  await assert.rejects(
+    () => service.checkout(user.id, item.id),
+    (error) => error instanceof AppError && error.status === 409 && error.message.includes('Put clothes away') && !error.message.includes('Make the bed'),
+  )
 
-  await service.reviewCompletion(completion.id, 'approved')
+  const secondCompletion = await service.completeChore(user.id, secondChore.id)
+  assert.equal((await service.getUserState(user.id)).checkoutBlocked, true)
+  await service.reviewCompletion(secondCompletion.id, 'approved')
   assert.equal((await service.getUserState(user.id)).checkoutBlocked, false)
   await service.checkout(user.id, item.id)
   assert.equal((await service.getPublicState()).users[0].checkout.item.id, item.id)
 })
 
-test('zero-minute chores only block users who are specifically assigned', async (t) => {
+test('chores only block assigned users and shared chores block everyone', async (t) => {
   const { service, user, item } = await fixture(t)
   await service.saveUsers([{ id: user.id, name: 'Alex' }, { name: 'Sam' }])
   const users = (await service.getAdminState()).users
   await service.saveChores([
     { title: 'Alex task', description: '', rewardMinutes: 0, recurrence: 'daily', assignedUserIds: [users[0].id] },
-    { title: 'Optional for everyone', description: '', rewardMinutes: 0, recurrence: 'daily', assignedUserIds: [] },
+    { title: 'Shared task', description: '', rewardMinutes: 10, recurrence: 'daily', assignedUserIds: [] },
   ])
 
+  const samState = await service.getUserState(users[1].id)
+  assert.deepEqual(samState.chores.map((chore) => chore.title), ['Shared task'])
+  assert.equal(samState.checkoutBlocked, true)
+  await assert.rejects(
+    () => service.checkout(users[1].id, item.id),
+    (error) => error instanceof AppError && error.status === 409 && error.message.includes('Shared task') && !error.message.includes('Alex task'),
+  )
+
+  const sharedChore = samState.chores[0]
+  const completion = await service.completeChore(users[1].id, sharedChore.id)
+  assert.equal((await service.getUserState(users[1].id)).checkoutBlocked, true)
+  await service.reviewCompletion(completion.id, 'approved')
   assert.equal((await service.getUserState(users[1].id)).checkoutBlocked, false)
   await service.checkout(users[1].id, item.id)
 })

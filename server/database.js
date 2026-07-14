@@ -130,19 +130,28 @@ export async function createDatabase(databaseFile = process.env.DATABASE_FILE ||
   }
 
   let queue = Promise.resolve()
+  const enqueue = (operation) => {
+    const run = queue.then(operation)
+    queue = run.catch(() => {})
+    return run
+  }
   return {
     file: databaseFile,
     read: () => db.data,
-    backup: () => copyFile(databaseFile, `${databaseFile}.bak`),
+    backup: () => enqueue(() => copyFile(databaseFile, `${databaseFile}.bak`)),
     transaction(operation) {
-      const run = queue.then(async () => {
-        const result = await operation(db.data)
-        db.data.meta.updatedAt = new Date().toISOString()
-        await db.write()
-        return result
+      return enqueue(async () => {
+        const previousData = structuredClone(db.data)
+        try {
+          const result = await operation(db.data)
+          db.data.meta.updatedAt = new Date().toISOString()
+          await db.write()
+          return result
+        } catch (error) {
+          db.data = previousData
+          throw error
+        }
       })
-      queue = run.catch(() => {})
-      return run
     },
     async replace(nextData) {
       return this.transaction(async () => {

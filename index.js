@@ -38,9 +38,17 @@ export async function createApplication(options = {}) {
   app.use(express.json({ limit: '2mb' }))
   app.use('/api', createApiRouter({ service, database, notify: () => io.emit('state:changed') }))
 
-  const publicPath = join(__dirname, 'client', 'dist')
-  app.use(express.static(publicPath, { maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0 }))
-  app.get('/{*splat}', (_request, response) => response.sendFile(join(publicPath, 'index.html')))
+  const publicPath = options.publicPath || join(__dirname, 'client', 'dist')
+  app.use('/assets', express.static(join(publicPath, 'assets'), {
+    immutable: true,
+    index: false,
+    maxAge: '1y',
+  }))
+  app.use(express.static(publicPath, { index: false, maxAge: 0 }))
+  app.get('/{*splat}', (_request, response) => {
+    response.setHeader('Cache-Control', 'no-cache')
+    response.sendFile(join(publicPath, 'index.html'))
+  })
 
   io.on('connection', async (socket) => {
     socket.emit('checkout:update', await service.getPublicState())
@@ -55,7 +63,16 @@ export async function createApplication(options = {}) {
   }, 1000)
   ticker.unref()
 
-  return { app, server, database, service, close: () => clearInterval(ticker) }
+  let closePromise
+  const close = () => {
+    if (!closePromise) {
+      clearInterval(ticker)
+      closePromise = io.close()
+    }
+    return closePromise
+  }
+
+  return { app, server, database, service, close }
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
@@ -63,4 +80,18 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   application.server.listen(port, host, () => {
     console.log(`ExpressACC is ready at http://localhost:${port}`)
   })
+
+  let shuttingDown = false
+  const shutdown = async (signal) => {
+    if (shuttingDown) return
+    shuttingDown = true
+    process.off('SIGINT', onInterrupt)
+    process.off('SIGTERM', onTerminate)
+    console.log(`Received ${signal}; shutting down ExpressACC`)
+    await application.close()
+  }
+  const onInterrupt = () => shutdown('SIGINT')
+  const onTerminate = () => shutdown('SIGTERM')
+  process.once('SIGINT', onInterrupt)
+  process.once('SIGTERM', onTerminate)
 }

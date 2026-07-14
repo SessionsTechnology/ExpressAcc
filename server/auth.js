@@ -10,11 +10,17 @@ export async function hashSecret(secret) {
 }
 
 export async function verifySecret(secret, stored) {
-  if (!stored || !stored.startsWith('scrypt$')) return false
-  const [, saltValue, hashValue] = stored.split('$')
-  const expected = Buffer.from(hashValue, 'base64url')
-  const actual = Buffer.from(await scrypt(String(secret), Buffer.from(saltValue, 'base64url'), expected.length))
-  return expected.length === actual.length && timingSafeEqual(expected, actual)
+  const parts = String(stored || '').split('$')
+  if (parts.length !== 3 || parts[0] !== 'scrypt' || !parts[1] || !parts[2]) return false
+  try {
+    const salt = Buffer.from(parts[1], 'base64url')
+    const expected = Buffer.from(parts[2], 'base64url')
+    if (salt.length !== 16 || expected.length !== 64) return false
+    const actual = Buffer.from(await scrypt(String(secret), salt, expected.length))
+    return timingSafeEqual(expected, actual)
+  } catch {
+    return false
+  }
 }
 
 export function createToken(payload, secret, lifetimeSeconds) {
@@ -25,14 +31,15 @@ export function createToken(payload, secret, lifetimeSeconds) {
 
 export function verifyToken(token, secret, expectedScope) {
   if (!token || !secret) return null
-  const [body, signature] = token.split('.')
-  if (!body || !signature) return null
+  const parts = String(token).split('.')
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null
+  const [body, signature] = parts
   const expected = createHmac('sha256', secret).update(body).digest()
   const actual = Buffer.from(signature, 'base64url')
   if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null
   try {
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString())
-    return payload.exp > Date.now() && payload.scope === expectedScope ? payload : null
+    return payload && Number.isFinite(payload.exp) && payload.exp > Date.now() && payload.scope === expectedScope ? payload : null
   } catch {
     return null
   }
@@ -40,5 +47,10 @@ export function verifyToken(token, secret, expectedScope) {
 
 export function readCookie(header, name) {
   const pair = String(header || '').split(';').map((value) => value.trim()).find((value) => value.startsWith(`${name}=`))
-  return pair ? decodeURIComponent(pair.slice(name.length + 1)) : null
+  if (!pair) return null
+  try {
+    return decodeURIComponent(pair.slice(name.length + 1))
+  } catch {
+    return null
+  }
 }

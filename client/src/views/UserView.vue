@@ -129,7 +129,7 @@ import { api, userApi } from '../lib/api.js'
 import { formatDuration } from '../lib/format.js'
 const route = useRoute(); const router = useRouter(); const socket = inject('socket')
 const userId = route.params.id
-const token = ref(sessionStorage.getItem(`expressacc-user-${userId}`) || '')
+const token = ref('')
 const pin = ref(''); const selectedItem = ref(''); const loading = ref(false); const error = ref(''); const message = ref('')
 const accessReady = ref(false)
 const idleTimeoutSeconds = ref(30)
@@ -138,13 +138,13 @@ const activityEvents = ['pointerdown', 'keydown', 'touchstart', 'scroll']
 let idleTimer; let lastActivityAt = Date.now()
 const requiredChoresRemaining = computed(() => state.chores.filter((chore) => chore.requiredForCheckout && chore.completionStatus !== 'approved').length)
 const choreButtonLabel = (chore) => {
-  if (chore.requiredForCheckout && state.user.checkoutEnabled) return 'Submit required chore'
+  if (chore.requiredForCheckout && state.user.checkoutEnabled) return chore.rewardMinutes ? `Submit required chore · +${chore.rewardMinutes}m` : 'Submit required chore'
   return chore.rewardMinutes ? `Submit · +${chore.rewardMinutes}m` : 'Submit chore'
 }
 async function load() {
   if (!token.value) return
   try { Object.assign(state, await userApi(userId, token.value)) }
-  catch (exception) { if (exception.status === 401) { token.value = ''; sessionStorage.removeItem(`expressacc-user-${userId}`) } else error.value = exception.message }
+  catch (exception) { if (exception.status === 401) token.value = ''; else error.value = exception.message }
 }
 async function prepareAccess() {
   try {
@@ -162,7 +162,6 @@ const timeoutMilliseconds = () => Math.max(5, Number(idleTimeoutSeconds.value) |
 function leaveInactiveProfile() {
   if (Date.now() - lastActivityAt < timeoutMilliseconds()) return scheduleIdleTimeout()
   token.value = ''
-  sessionStorage.removeItem(`expressacc-user-${userId}`)
   void router.replace('/checkout')
 }
 function scheduleIdleTimeout() {
@@ -179,7 +178,7 @@ async function refreshIdleSettings() {
     scheduleIdleTimeout()
   } catch (exception) { error.value = exception.message }
 }
-async function unlock() { loading.value = true; error.value = ''; try { const result = await api(`/users/${userId}/unlock`, { method: 'POST', body: { pin: pin.value } }); token.value = result.token; sessionStorage.setItem(`expressacc-user-${userId}`, result.token); await load() } catch (exception) { error.value = exception.message } finally { loading.value = false } }
+async function unlock() { loading.value = true; error.value = ''; try { const result = await api(`/users/${userId}/unlock`, { method: 'POST', body: { pin: pin.value } }); token.value = result.token; await load() } catch (exception) { error.value = exception.message } finally { loading.value = false } }
 async function act(path, body, success, method = 'POST') { loading.value = true; error.value = ''; try { await userApi(userId, token.value, path, { method, body }); message.value = success; selectedItem.value = ''; await load() } catch (exception) { error.value = exception.message } finally { loading.value = false } }
 const checkout = () => act('/checkout', { itemId: selectedItem.value }, 'Item checked out.')
 const checkin = () => act('/checkin', {}, 'Item checked in. Thank you!')
