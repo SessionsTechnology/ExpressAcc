@@ -58,7 +58,10 @@
         <v-card class="glass-card panel-card user-time-card pa-2 h-100">
           <v-card-text>
             <div class="user-card-identity mb-5"><v-avatar color="primary" variant="tonal">{{ user.name.slice(0,1).toUpperCase() }}</v-avatar><div class="user-card-identity__copy"><h3 class="text-h6">{{ user.name }}</h3><span class="muted text-caption">{{ user.checkout ? `${user.checkout.item.name} checked out` : user.checkoutEnabled ? 'No item checked out' : 'Chore-only profile' }}</span></div></div>
-            <template v-if="user.checkoutEnabled"><div class="stat-number" :class="{ 'text-error': user.timeRemainingSeconds === 0 }">{{ formatDuration(user.timeRemainingSeconds) }}</div><div class="muted text-caption">remaining today</div></template>
+            <div v-if="user.checkoutEnabled" class="user-roster-stats">
+              <div><div class="stat-number" :class="{ 'text-error': user.timeRemainingSeconds === 0 }">{{ formatDuration(user.timeRemainingSeconds) }}</div><div class="muted text-caption">remaining today</div></div>
+              <div v-if="user.assignedChoreCount"><div class="stat-number">{{ user.assignedChoreCount }}</div><div class="muted text-caption">{{ user.assignedChoreCount === 1 ? 'chore' : 'chores' }} left</div></div>
+            </div>
             <template v-else><div class="stat-number">{{ user.assignedChoreCount }}</div><div class="muted text-caption">{{ user.assignedChoreCount === 1 ? 'chore' : 'chores' }} left</div></template>
           </v-card-text>
           <v-card-actions v-if="user.checkoutEnabled" class="user-time-actions"><v-btn size="small" variant="tonal" color="warning" @click="adjust(user, -900)">−15m</v-btn><v-btn size="small" variant="tonal" color="success" @click="adjust(user, 900)">+15m</v-btn><v-btn size="small" variant="tonal" prepend-icon="mdi-pencil-outline" @click="openTimeDialog(user)">Set</v-btn><v-btn size="small" variant="text" prepend-icon="mdi-restore" @click="resetTime(user)">Default</v-btn><v-spacer /><v-chip v-if="user.checkout" color="accent" size="small" variant="tonal">In use</v-chip></v-card-actions>
@@ -225,6 +228,12 @@ onBeforeUnmount(() => { socket.off('state:changed', onChanged); socket.off('chec
 .user-time-actions {
   flex-wrap: wrap;
   gap: 4px;
+}
+
+.user-roster-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
 }
 
 .dashboard-panel-title {

@@ -194,6 +194,7 @@ test('all assigned chores require approval before any item can be checked out', 
   const userState = await service.getUserState(user.id)
   const [rewardedChore, secondChore] = userState.chores
 
+  assert.equal((await service.getAdminState()).users[0].assignedChoreCount, 2)
   assert.equal(userState.chores.every((chore) => chore.requiredForCheckout), true)
   assert.equal(userState.checkoutBlocked, true)
   await assert.rejects(
@@ -212,6 +213,7 @@ test('all assigned chores require approval before any item can be checked out', 
   const secondCompletion = await service.completeChore(user.id, secondChore.id)
   assert.equal((await service.getUserState(user.id)).checkoutBlocked, true)
   await service.reviewCompletion(secondCompletion.id, 'approved')
+  assert.equal((await service.getAdminState()).users[0].assignedChoreCount, 0)
   assert.equal((await service.getUserState(user.id)).checkoutBlocked, false)
   await service.checkout(user.id, item.id)
   assert.equal((await service.getPublicState()).users[0].checkout.item.id, item.id)
