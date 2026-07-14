@@ -280,6 +280,7 @@ test('chore-only users have no checkout timer or available items and cannot chec
   const kiosk = await service.getPublicState()
   assert.equal(kiosk.users[0].checkoutEnabled, false)
   assert.equal(kiosk.users[0].assignedChoreCount, 1)
+  assert.equal((await service.getAdminState()).users[0].assignedChoreCount, 1)
   assert.equal(kiosk.chores[0].assignees[0].name, user.name)
   assert.deepEqual(kiosk.chores[0].assignedUserIds, [user.id])
 
@@ -288,6 +289,7 @@ test('chore-only users have no checkout timer or available items and cannot chec
   await service.reviewCompletion(completion.id, 'approved')
   const approvedKiosk = await service.getPublicState()
   assert.equal(approvedKiosk.users[0].assignedChoreCount, 0)
+  assert.equal((await service.getAdminState()).users[0].assignedChoreCount, 0)
   assert.deepEqual(approvedKiosk.chores, [])
 })
 

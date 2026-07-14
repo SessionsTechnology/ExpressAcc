@@ -57,7 +57,12 @@ function publicUser(user, data, now = new Date()) {
 }
 
 function adminUser(user, data) {
-  return { ...publicUser(user, data), createdAt: user.createdAt }
+  const today = localDate(new Date(), data.settings.timeZone)
+  return {
+    ...publicUser(user, data),
+    createdAt: user.createdAt,
+    assignedChoreCount: requiredChoreBlockers(data, user.id, today.key).length,
+  }
 }
 
 function resetDayIfNeeded(data, now = new Date()) {
