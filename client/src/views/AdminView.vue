@@ -55,7 +55,10 @@
 
     <div class="content-section-header mb-4">
       <div><h2 class="section-heading">Today’s roster</h2><p class="muted text-body-2 mb-0">Remaining allowance and live checkout status by person.</p></div>
-      <v-btn to="/checkout" variant="text" append-icon="mdi-arrow-right">Open kiosk</v-btn>
+      <div class="roster-header-actions">
+        <v-btn color="secondary" variant="tonal" prepend-icon="mdi-clipboard-account-outline" @click="assignmentDialog = true">View assignments</v-btn>
+        <v-btn to="/checkout" variant="text" append-icon="mdi-arrow-right">Open kiosk</v-btn>
+      </div>
     </div>
     <v-row class="mb-9">
       <v-col v-for="user in activeUsers" :key="user.id" cols="12" md="6" lg="4">
@@ -107,6 +110,39 @@
       </v-col>
     </v-row>
 
+    <v-dialog v-model="assignmentDialog" max-width="760" scrollable>
+      <v-card class="pa-2">
+        <v-card-title class="assignment-dialog-title">
+          <div><h2 class="section-heading">Chore assignments</h2><p class="muted text-body-2 mb-0">Active chores and the people responsible for them.</p></div>
+          <v-btn icon="mdi-close" variant="text" aria-label="Close assignments" @click="assignmentDialog = false" />
+        </v-card-title>
+        <v-card-text>
+          <div class="assignment-sort-toolbar mb-3">
+            <v-select v-model="assignmentSortBy" :items="assignmentSortOptions" label="Sort assignments by" density="compact" variant="outlined" hide-details />
+            <v-btn variant="tonal" :prepend-icon="assignmentSortOrder === 'asc' ? 'mdi-sort-ascending' : 'mdi-sort-descending'" :aria-label="`Order assignments ${assignmentSortOrder === 'asc' ? 'descending' : 'ascending'}`" @click="toggleAssignmentSortOrder">{{ assignmentSortOrder === 'asc' ? 'Ascending' : 'Descending' }}</v-btn>
+          </div>
+          <div v-if="choreAssignments.length" class="assignment-dialog-list">
+            <div v-for="chore in choreAssignments" :key="chore.id" class="assignment-dialog-row">
+              <div class="assignment-dialog-chore">
+                <v-avatar color="secondary" variant="tonal" size="40"><v-icon icon="mdi-broom" /></v-avatar>
+                <div><h3 class="text-subtitle-1 font-weight-bold">{{ chore.title }}</h3><p class="muted text-caption mb-0">{{ chore.description || recurrenceLabel(chore.recurrence) }}</p></div>
+              </div>
+              <div class="assignment-dialog-people">
+                <span class="muted text-caption assignment-dialog-label">ASSIGNED TO</span>
+                <div class="assignment-dialog-chips">
+                  <v-chip v-if="!chore.assignedUserIds.length" size="small" color="primary" variant="tonal">Everyone</v-chip>
+                  <v-chip v-for="assignee in chore.assignees" v-else :key="assignee.id" size="small" color="primary" variant="tonal">{{ assignee.name }}<span v-if="assignee.disabled"> (inactive)</span></v-chip>
+                  <span v-if="chore.assignedUserIds.length && !chore.assignees.length" class="muted text-caption">No users</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty-state">No active chores are configured.</div>
+        </v-card-text>
+        <v-card-actions><v-btn :to="{ name: 'settings', query: { tab: 'chores' } }" variant="text" prepend-icon="mdi-cog-outline" @click="assignmentDialog = false">Manage chores</v-btn><v-spacer /><v-btn color="primary" variant="tonal" @click="assignmentDialog = false">Done</v-btn></v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-dialog v-model="timeDialog" max-width="480">
       <v-card class="pa-2">
         <v-card-title>Set {{ selectedUser?.name }}’s time</v-card-title>
@@ -130,19 +166,46 @@
 </template>
 
 <script setup>
-import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../lib/api.js'
 import { formatDate, formatDuration } from '../lib/format.js'
 const router = useRouter(); const socket = inject('socket')
-const ready = ref(false); const saving = ref(false); const error = ref(''); const notice = ref(''); const familySpaceProtected = ref(false); const users = ref([]); const items = ref([]); const completions = ref([]); const activity = ref([])
+const ready = ref(false); const saving = ref(false); const error = ref(''); const notice = ref(''); const familySpaceProtected = ref(false); const users = ref([]); const items = ref([]); const chores = ref([]); const completions = ref([]); const activity = ref([])
+const assignmentDialog = ref(false)
+const assignmentSortOptions = [{ title:'Chore name', value:'title' }, { title:'Assigned person', value:'assignee' }, { title:'Recurrence', value:'recurrence' }]
+const assignmentSortKeys = new Set(assignmentSortOptions.map((option) => option.value))
+function savedAssignmentPreference(key, fallback) { try { return window.localStorage.getItem(key) || fallback } catch { return fallback } }
+const savedAssignmentSortBy = savedAssignmentPreference('routioneer:assignment-sort-by', 'title')
+const savedAssignmentSortOrder = savedAssignmentPreference('routioneer:assignment-sort-order', 'asc')
+const assignmentSortBy = ref(assignmentSortKeys.has(savedAssignmentSortBy) ? savedAssignmentSortBy : 'title')
+const assignmentSortOrder = ref(['asc', 'desc'].includes(savedAssignmentSortOrder) ? savedAssignmentSortOrder : 'asc')
 const timeDialog = ref(false); const selectedUser = ref(null); const timeHours = ref(0); const timeMinutes = ref(0); const dialogError = ref('')
 const resetDialog = ref(false); const resetTarget = ref(null)
+const assignmentCollator = new Intl.Collator(undefined, { numeric:true, sensitivity:'base' })
 const activeUsers = computed(() => users.value.filter((user) => !user.disabled))
+const activeChores = computed(() => chores.value.filter((chore) => !chore.disabled))
+const recurrenceLabel = (recurrence) => ({ once: 'One-time chore', daily: 'Daily chore', weekly: 'Weekly chore' }[recurrence] || 'Chore')
+function assignmentSortValue(chore) {
+  if (assignmentSortBy.value === 'assignee') {
+    if (!chore.assignedUserIds.length) return 'Everyone'
+    return chore.assignees.map((assignee) => assignee.name).join(', ') || 'No users'
+  }
+  if (assignmentSortBy.value === 'recurrence') return recurrenceLabel(chore.recurrence)
+  return chore.title
+}
+const choreAssignments = computed(() => {
+  const direction = assignmentSortOrder.value === 'asc' ? 1 : -1
+  return activeChores.value
+    .map((chore) => ({ ...chore, assignees: users.value.filter((user) => chore.assignedUserIds.includes(user.id)).sort((left, right) => assignmentCollator.compare(left.name, right.name)) }))
+    .sort((left, right) => direction * (assignmentCollator.compare(assignmentSortValue(left), assignmentSortValue(right)) || assignmentCollator.compare(left.title, right.title)))
+})
 const pending = computed(() => completions.value.filter((completion) => completion.status === 'pending'))
 const approved = computed(() => completions.value.filter((completion) => completion.status === 'approved').slice(0, 5))
 const availableItemCount = computed(() => Math.max(0, items.value.filter((item) => !item.disabled).length - users.value.filter((user) => user.checkout).length))
-async function load() { try { const state = await api('/admin/state'); familySpaceProtected.value = Boolean(state.settings.familySpaceProtected); users.value = state.users; items.value = state.items; completions.value = state.completions; activity.value = state.activity } catch (exception) { if (exception.status === 401) return router.replace('/admin/login'); error.value = exception.message } finally { ready.value = true } }
+function toggleAssignmentSortOrder() { assignmentSortOrder.value = assignmentSortOrder.value === 'asc' ? 'desc' : 'asc' }
+watch([assignmentSortBy, assignmentSortOrder], ([sortBy, sortOrder]) => { try { window.localStorage.setItem('routioneer:assignment-sort-by', sortBy); window.localStorage.setItem('routioneer:assignment-sort-order', sortOrder) } catch {} })
+async function load() { try { const state = await api('/admin/state'); familySpaceProtected.value = Boolean(state.settings.familySpaceProtected); users.value = state.users; items.value = state.items; chores.value = state.chores; completions.value = state.completions; activity.value = state.activity } catch (exception) { if (exception.status === 401) return router.replace('/admin/login'); error.value = exception.message } finally { ready.value = true } }
 async function adjust(user, deltaSeconds) { try { await api(`/admin/users/${user.id}/time`, { method: 'POST', body: { deltaSeconds } }); await load() } catch (exception) { error.value = exception.message } }
 async function review(completion, status) { try { await api(`/admin/completions/${completion.id}/review`, { method: 'POST', body: { status } }); await load() } catch (exception) { error.value = exception.message } }
 function openTimeDialog(user) { selectedUser.value = user; timeHours.value = Math.floor(user.timeRemainingSeconds / 3600); timeMinutes.value = Math.floor((user.timeRemainingSeconds % 3600) / 60); dialogError.value = ''; timeDialog.value = true }
@@ -164,17 +227,21 @@ onBeforeUnmount(() => { socket.off('state:changed', onChanged); socket.off('chec
 <style scoped>
 .admin-header-actions,
 .content-section-header,
+.roster-header-actions,
 .dashboard-panel-title,
 .user-card-identity,
 .user-time-actions,
 .approval-actions,
-.reviewed-heading {
+.reviewed-heading,
+.assignment-dialog-title,
+.assignment-dialog-chore {
   display: flex;
   align-items: center;
 }
 
 .admin-header-actions,
-.approval-actions {
+.approval-actions,
+.roster-header-actions {
   gap: 8px;
 }
 
@@ -240,6 +307,66 @@ onBeforeUnmount(() => { socket.off('state:changed', onChanged); socket.off('chec
   gap: 12px 28px;
 }
 
+.assignment-dialog-title {
+  justify-content: space-between;
+  gap: 16px;
+  white-space: normal;
+}
+
+.assignment-sort-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 240px) max-content;
+  align-items: center;
+  gap: 10px;
+  padding: 4px;
+}
+
+.assignment-dialog-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, .8fr);
+  gap: 20px;
+  padding: 18px 4px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), .08);
+}
+
+.assignment-dialog-row:last-child {
+  border-bottom: 0;
+}
+
+.assignment-dialog-chore {
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.assignment-dialog-chore > div {
+  min-width: 0;
+}
+
+.assignment-dialog-chore h3,
+.assignment-dialog-chore p {
+  overflow-wrap: anywhere;
+}
+
+.assignment-dialog-people {
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  gap: 7px;
+}
+
+.assignment-dialog-label {
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+.assignment-dialog-chips {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .dashboard-panel-title {
   flex-wrap: wrap;
   gap: 10px;
@@ -276,6 +403,32 @@ onBeforeUnmount(() => { socket.off('state:changed', onChanged); socket.off('chec
   .content-section-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .roster-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .assignment-dialog-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .assignment-sort-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .assignment-sort-toolbar .v-btn {
+    width: 100%;
+  }
+
+  .assignment-dialog-people {
+    justify-items: start;
+  }
+
+  .assignment-dialog-chips {
+    justify-content: flex-start;
   }
 
   .approval-item {
