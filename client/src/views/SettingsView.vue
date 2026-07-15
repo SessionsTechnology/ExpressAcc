@@ -95,9 +95,10 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, toRaw } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from '../lib/api.js'
-const router = useRouter(); const ready = ref(false); const saving = ref(false); const savingDarkMode = ref(false); const tab = ref('general'); const backupFile = ref(null); const openItem = ref(null); const openChore = ref(null)
+const route = useRoute(); const router = useRouter(); const settingsTabs = new Set(['general', 'users', 'items', 'chores', 'data']); const initialTab = settingsTabs.has(route.query.tab) ? route.query.tab : 'general'
+const ready = ref(false); const saving = ref(false); const savingDarkMode = ref(false); const tab = ref(initialTab); const backupFile = ref(null); const openItem = ref(null); const openChore = ref(null)
 const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; const recurrences = [{title:'One time',value:'once'},{title:'Daily',value:'daily'},{title:'Weekly',value:'weekly'}]
 const guessedZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; const timeZones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [guessedZone, 'UTC']
 const settings = reactive({ applicationName:'', password:'', familyPassword:'', clearFamilyPassword:false, familySpaceProtected:false, timeZone:guessedZone, darkMode:false, kioskMessage:'', kioskTimeoutSeconds:30, dailyTimeMinutes:Object.fromEntries(weekdays.map(day => [day,0])) }); const users = ref([]); const items = ref([]); const chores = ref([])
