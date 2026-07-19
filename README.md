@@ -87,6 +87,8 @@ docker compose ps
 
 The `latest` tag follows the current production version on `main`. Every published image also receives an immutable `sha-<commit>` tag, and version tags such as `1.2.0` are published when matching Git tags are created.
 
+See [Container installation and operations](docs/CONTAINERS.md) for configuration, existing-install migration, version pinning, rollback, health checks, and image-publishing details.
+
 ## Upgrading an older installation
 
 1. Back up the existing `lowdb/db.json` or Docker volume.
