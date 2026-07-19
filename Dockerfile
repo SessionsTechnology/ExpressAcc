@@ -31,6 +31,12 @@ COPY --chown=node:node server ./server
 COPY --from=builder --chown=node:node /app/client/dist ./client/dist
 
 RUN mkdir -p /data && chown node:node /data
+
+LABEL org.opencontainers.image.title="Routioneer" \
+      org.opencontainers.image.description="Self-hosted shared-item checkout, screen-time, and chore manager" \
+      org.opencontainers.image.source="https://github.com/SessionsTechnology/Routioneer" \
+      org.opencontainers.image.licenses="AGPL-3.0-only"
+
 USER node
 
 EXPOSE 3001

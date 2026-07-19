@@ -1,7 +1,7 @@
 services:
   routioneer:
-    build: .
-    image: routioneer:latest
+    image: ghcr.io/sessionstechnology/routioneer:latest
+    pull_policy: always
     environment:
       TZ: ${TZ:-America/Chicago}
       DATABASE_FILE: /data/db.json

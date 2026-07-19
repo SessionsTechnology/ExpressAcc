@@ -53,11 +53,16 @@ By default, application data is written to `lowdb/db.json`. Override it with `DA
 
 ## Run with Docker
 
+Routioneer publishes a ready-to-run image for 64-bit Intel/AMD and ARM systems. You do not need to clone the repository or build the app.
+
 ```sh
-docker compose up -d --build
+mkdir -p routioneer
+cd routioneer
+curl -fsSLO https://raw.githubusercontent.com/SessionsTechnology/Routioneer/main/docker-compose.yml
+docker compose up -d
 ```
 
-Open [http://localhost:3001](http://localhost:3001). Data is stored in the legacy-named `express-acc-data` Docker volume so existing installations keep using their original database after upgrading.
+Open [http://localhost:3001](http://localhost:3001). The image is downloaded from `ghcr.io/sessionstechnology/routioneer:latest`. Data is stored in the legacy-named `express-acc-data` Docker volume so existing installations keep using their original database after upgrading.
 
 Optional environment overrides:
 
@@ -65,10 +70,27 @@ Optional environment overrides:
 TZ=America/New_York PORT=8080 docker compose up -d
 ```
 
+### Update the container
+
+First download a backup from **Parent dashboard → Settings → Data**. Then, from the folder containing `docker-compose.yml`, run:
+
+```sh
+docker compose pull
+docker compose up -d
+```
+
+The container is replaced with the newest image while the `express-acc-data` volume—and therefore your household data—stays in place. You can confirm the app is healthy with:
+
+```sh
+docker compose ps
+```
+
+The `latest` tag follows the current production version on `main`. Every published image also receives an immutable `sha-<commit>` tag, and version tags such as `1.2.0` are published when matching Git tags are created.
+
 ## Upgrading an older installation
 
 1. Back up the existing `lowdb/db.json` or Docker volume.
-2. Start the new version with the same data location.
+2. Start the new version with the same data location. Existing Compose users can replace `build: .` and `image: routioneer:latest` with `image: ghcr.io/sessionstechnology/routioneer:latest` before running the update commands above.
 3. The Compose configuration continues using the `express-acc-data` volume key for upgrade compatibility; do not replace it with a new empty volume.
 4. Routioneer migrates the legacy schema and former default application name on first launch, then saves the original file as `db.json.bak`. Custom application names remain unchanged.
 5. Sign in with the existing admin password and review users, items, and daily allowances.
