@@ -2,7 +2,7 @@
 
 This folder is a self-contained static site. It has no build step and does not depend on the Routioneer application server.
 
-The repository's GitHub Pages workflow publishes this folder to [sessionstechnology.github.io/ExpressAcc](https://sessionstechnology.github.io/ExpressAcc/) whenever landing-page files change on `main`.
+The repository's GitHub Pages workflow publishes this folder to [sessionstechnology.github.io/Routioneer](https://sessionstechnology.github.io/Routioneer/) whenever landing-page files change on `main`.
 
 ## Preview locally
 

@@ -65,7 +65,7 @@ Optional environment overrides:
 TZ=America/New_York PORT=8080 docker compose up -d
 ```
 
-## Upgrading an older ExpressACC installation
+## Upgrading an older installation
 
 1. Back up the existing `lowdb/db.json` or Docker volume.
 2. Start the new version with the same data location.
