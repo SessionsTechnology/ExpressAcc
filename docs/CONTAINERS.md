@@ -58,9 +58,34 @@ Docker normally prefixes a Compose-managed volume with the project name. For exa
 
 The container itself is replaceable. Only the data volume and any backups you download need to be preserved.
 
+## Back up the complete data volume
+
+The in-app JSON export is convenient for household records and settings. A complete stopped `/data` archive is the safer backup before a container migration or rollback because it also preserves credential hashes and other installation-only state.
+
+From the Compose folder, stop Routioneer briefly and stream the volume contents into an archive on the Docker host:
+
+```sh
+mkdir -p backups
+docker compose stop routioneer
+docker compose run --rm --no-deps -T routioneer sh -c 'tar -C /data -czf - .' > "backups/routioneer-data-$(date +%Y%m%d-%H%M%S).tgz"
+docker compose start routioneer
+```
+
+Keep this archive private. It contains security-sensitive installation data and should be protected like a password.
+
+To restore a selected archive, stop the application and replace the contents of `/data`:
+
+```sh
+docker compose stop routioneer
+docker compose run --rm --no-deps -T routioneer sh -c 'find /data -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + && tar -C /data -xzf -' < backups/SELECTED-BACKUP.tgz
+docker compose start routioneer
+```
+
+Restoring replaces the current database. Confirm the selected archive name before running the restore command, and keep the current data archive until the restored application has been checked.
+
 ## Update Routioneer
 
-Before an update, open **Parent dashboard → Settings → Data** and select **Download backup**. Store the downloaded JSON file somewhere outside the Docker server.
+Before a routine update, open **Parent dashboard → Settings → Data** and select **Download backup**. Store the downloaded JSON file somewhere outside the Docker server. For a version rollback or server migration, also create the complete data-volume archive described above.
 
 From the folder containing `docker-compose.yml`, run:
 
@@ -84,7 +109,7 @@ docker compose up -d
 
 Perform this migration in the existing Compose folder so Docker continues using the same project name and volume.
 
-1. Download a backup from **Parent dashboard → Settings → Data**.
+1. Download a backup from **Parent dashboard → Settings → Data**, then create a complete stopped data-volume archive using the backup procedure above.
 2. Stop the existing container without deleting its volume:
 
    ```sh
